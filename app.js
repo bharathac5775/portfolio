@@ -629,13 +629,16 @@ function initContactForm() {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: searchParams.toString()
         })
-        .then(() => {
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
             setTimeout(() => {
                 form.reset();
                 submitBtn.disabled = false;
                 btnSpan.textContent = 'Execute Transmission';
                 statusText.className = 'form-status success';
-                statusText.innerHTML = '<span class="t-accent">[OK]</span> Status 202 — message accepted. I\'ll reply shortly.';
+                statusText.innerHTML = '<span class="t-accent">[OK]</span> Status 200 — message accepted. I\'ll reply shortly.';
             }, 800);
         })
         .catch((error) => {
