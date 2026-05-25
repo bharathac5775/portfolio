@@ -2179,3 +2179,640 @@ textarea.form-input {
         height: 44px;
     }
 }
+
+/* ==========================================================================
+   PLATFORM ENGINEERING LIVE VIEW
+   GitOps commit graph + CI/CD pipeline + observability strip.
+   Visual language matches .terminal-console (k8s-aiops) but pushes density,
+   color, and motion further: section-level component, not a sidebar widget.
+   ========================================================================== */
+.platform-section {
+    padding: 100px 0;
+    position: relative;
+}
+
+.platform-section .section-subtitle {
+    margin-top: 14px;
+    color: var(--color-text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+}
+
+.platform-stage {
+    display: grid;
+    grid-template-columns: 1fr 1.35fr;
+    gap: 24px;
+    margin-top: 40px;
+    align-items: stretch;
+}
+
+@media (max-width: 980px) {
+    .platform-stage {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+}
+
+/* Shared console chrome — re-uses .terminal-header styles already defined. */
+.flow-console,
+.pipeline-console {
+    background: #060911;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    box-shadow: 0 14px 50px rgba(0, 0, 0, 0.6),
+                0 0 0 1px rgba(20, 184, 166, 0.04) inset;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.flow-console:hover,
+.pipeline-console:hover {
+    border-color: rgba(20, 184, 166, 0.35);
+}
+
+/* ---------- End-to-end DevOps flow (left panel) ---------- */
+.flow-canvas {
+    flex: 1;
+    position: relative;
+    aspect-ratio: 600 / 460;
+    min-height: 380px;
+    padding: 0;
+    background:
+        radial-gradient(900px 220px at 50% 0%, rgba(20, 184, 166, 0.07), transparent 70%),
+        radial-gradient(700px 200px at 100% 100%, rgba(6, 182, 212, 0.05), transparent 70%),
+        #060911;
+    overflow: hidden;
+}
+
+/* SVG layers: edges sit behind nodes, packets sit in front */
+.flow-edges,
+.flow-packet-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+.flow-edges      { z-index: 1; }
+.flow-packet-layer { z-index: 3; }
+
+.flow-edge {
+    fill: none;
+    stroke: rgba(51, 65, 85, 0.65);
+    stroke-width: 1.4;
+    stroke-linecap: round;
+    transition: stroke 0.4s ease, stroke-width 0.3s ease, filter 0.3s ease;
+}
+.flow-edge.edge-dashed {
+    stroke-dasharray: 4 4;
+}
+.flow-edge.edge-telemetry {
+    stroke: rgba(6, 182, 212, 0.35);
+    stroke-dasharray: 2 4;
+}
+.flow-edge.edge-gitops {
+    stroke: rgba(16, 185, 129, 0.35);
+    stroke-dasharray: 5 3;
+}
+.flow-edge.edge-alert {
+    stroke: rgba(239, 68, 68, 0.25);
+    stroke-dasharray: 3 5;
+}
+
+/* Active edge: glowing teal, thicker */
+.flow-edge.is-active {
+    stroke: var(--color-accent-teal);
+    stroke-width: 2.2;
+    filter: drop-shadow(0 0 4px var(--color-accent-teal-glow));
+    stroke-dasharray: none;
+}
+.flow-edge.edge-telemetry.is-active {
+    stroke: var(--color-accent-cyan);
+    filter: drop-shadow(0 0 4px var(--color-accent-cyan-glow));
+}
+.flow-edge.edge-gitops.is-active {
+    stroke: #10b981;
+    stroke-dasharray: none;
+    filter: drop-shadow(0 0 5px rgba(16, 185, 129, 0.6));
+}
+.flow-edge.edge-alert.is-active {
+    stroke: var(--color-terminal-red);
+    filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.5));
+}
+
+/* The flying packet — JS animates cx/cy along the path */
+.flow-packet {
+    fill: var(--color-accent-teal);
+    opacity: 0;
+    transition: opacity 0.15s ease, fill 0.2s ease;
+}
+.flow-packet.is-flying { opacity: 1; }
+.flow-packet.is-telemetry { fill: var(--color-accent-cyan); }
+.flow-packet.is-alert     { fill: var(--color-terminal-red); }
+.flow-packet.is-gitops    { fill: #10b981; filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.7)); }
+
+/* ---------- Nodes ---------- */
+.flow-node {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    z-index: 2;
+    cursor: default;
+}
+
+.node-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid var(--color-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+    transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
+                box-shadow 0.3s ease,
+                border-color 0.3s ease;
+}
+
+.node-icon img {
+    width: 26px;
+    height: 26px;
+    object-fit: contain;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+}
+
+.node-emoji {
+    font-size: 22px;
+    line-height: 1;
+}
+
+.node-label {
+    font-size: 0.66rem;
+    color: var(--color-text-secondary);
+    font-weight: 600;
+    text-align: center;
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+    transition: color 0.3s ease;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+    white-space: nowrap;
+}
+
+.node-sub {
+    display: block;
+    font-size: 0.58rem;
+    color: var(--color-text-muted);
+    font-weight: 400;
+    margin-top: 1px;
+}
+
+/* Active state: pulsing ring + glow + slight scale */
+.flow-node.is-active .node-icon {
+    transform: scale(1.12);
+    border-color: var(--color-accent-teal);
+    box-shadow:
+        0 0 0 3px rgba(20, 184, 166, 0.18),
+        0 0 20px rgba(20, 184, 166, 0.45),
+        0 4px 14px rgba(0, 0, 0, 0.5);
+    animation: nodePulse 1.4s ease-in-out infinite;
+}
+
+.flow-node.is-active .node-label {
+    color: var(--color-accent-teal);
+}
+
+.flow-node.is-success .node-icon {
+    border-color: rgba(16, 185, 129, 0.5);
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.18), 0 4px 14px rgba(0, 0, 0, 0.5);
+}
+
+.flow-node.is-fail .node-icon {
+    border-color: var(--color-terminal-red);
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.25), 0 0 18px rgba(239, 68, 68, 0.4);
+    animation: nodeShake 0.4s ease;
+}
+
+@keyframes nodePulse {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.18), 0 0 20px rgba(20, 184, 166, 0.45), 0 4px 14px rgba(0, 0, 0, 0.5); }
+    50%      { box-shadow: 0 0 0 6px rgba(20, 184, 166, 0.08), 0 0 28px rgba(20, 184, 166, 0.6),  0 4px 14px rgba(0, 0, 0, 0.5); }
+}
+@keyframes nodeShake {
+    0%, 100% { transform: scale(1.08) translateX(0); }
+    25%      { transform: scale(1.08) translateX(-2px); }
+    75%      { transform: scale(1.08) translateX(2px); }
+}
+
+/* ---------- Cluster groupings (Jenkins, IaC+Config, Observability) ---------- */
+.flow-cluster {
+    position: absolute;
+    border: 1px dashed rgba(51, 65, 85, 0.7);
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.25);
+    transition: border-color 0.4s ease, background 0.4s ease;
+}
+
+.cluster-label {
+    position: absolute;
+    top: -14px;
+    left: 12px;
+    background: #060911;
+    padding: 2px 10px;
+    color: #cbd5e1;
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    font-weight: 700;
+    text-transform: uppercase;
+    border-radius: 4px;
+    border: 1px solid rgba(51, 65, 85, 0.7);
+    z-index: 5;
+    white-space: nowrap;
+    line-height: 1;
+}
+
+.flow-cluster.is-active {
+    border-color: var(--color-accent-teal);
+    background: rgba(20, 184, 166, 0.05);
+}
+.flow-cluster.is-active .cluster-label {
+    color: var(--color-accent-teal);
+}
+
+.cluster-obs.is-active {
+    border-color: var(--color-accent-cyan);
+    background: rgba(6, 182, 212, 0.05);
+}
+.cluster-obs.is-active .cluster-label {
+    color: var(--color-accent-cyan);
+}
+
+/* ---------- Footer legend ---------- */
+.flow-footer {
+    display: flex;
+    gap: 18px;
+    padding: 10px 16px;
+    border-top: 1px solid var(--color-border);
+    background: #050810;
+    color: var(--color-text-muted);
+    font-size: 0.65rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.flow-legend {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.legend-swatch {
+    display: inline-block;
+    width: 16px;
+    height: 2px;
+    background: var(--color-accent-teal);
+    border-radius: 1px;
+}
+.legend-swatch.swatch-dashed {
+    background: repeating-linear-gradient(90deg,
+        var(--color-text-secondary) 0 4px,
+        transparent 4px 8px);
+}
+.legend-swatch.swatch-alert {
+    background: var(--color-terminal-red);
+    opacity: 0.7;
+}
+
+/* ---------- Responsive: stack nodes vertically on mobile ---------- */
+@media (max-width: 600px) {
+    .flow-canvas {
+        min-height: 420px;
+    }
+    .node-icon { width: 36px; height: 36px; }
+    .node-icon img { width: 22px; height: 22px; }
+    .node-label { font-size: 0.6rem; }
+    .node-sub { font-size: 0.52rem; }
+}
+
+/* ---------- Pipeline (right panel) ---------- */
+.pipeline-stages {
+    list-style: none;
+    margin: 0;
+    padding: 16px 18px 8px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px 16px;
+    border-bottom: 1px dashed var(--color-border);
+}
+
+@media (max-width: 600px) {
+    .pipeline-stages {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+.pipe-stage {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px solid rgba(51, 65, 85, 0.4);
+    transition: background 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.pipe-stage::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(120deg, transparent, rgba(20, 184, 166, 0.18), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.6s ease;
+    pointer-events: none;
+}
+
+.pipe-stage.active::before {
+    transform: translateX(100%);
+    transition: transform 1.4s linear;
+}
+
+.pipe-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #1f2937;
+    border: 1px solid var(--color-border);
+    flex-shrink: 0;
+    box-shadow: 0 0 0 0 rgba(20, 184, 166, 0);
+    transition: background 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.pipe-name {
+    color: var(--color-text-secondary);
+    font-weight: 600;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+}
+
+.pipe-meta {
+    color: var(--color-text-muted);
+    font-size: 0.65rem;
+    margin-left: auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Stage states */
+.pipe-stage.active {
+    border-color: var(--color-accent-teal);
+    background: rgba(20, 184, 166, 0.08);
+}
+.pipe-stage.active .pipe-dot {
+    background: var(--color-accent-teal);
+    border-color: var(--color-accent-teal);
+    box-shadow: 0 0 12px var(--color-accent-teal-glow), 0 0 0 3px rgba(20, 184, 166, 0.15);
+    animation: pipeDotPulse 1.1s ease-in-out infinite;
+}
+.pipe-stage.active .pipe-name { color: var(--color-accent-teal); }
+
+.pipe-stage.success {
+    border-color: rgba(16, 185, 129, 0.4);
+    background: rgba(16, 185, 129, 0.06);
+}
+.pipe-stage.success .pipe-dot {
+    background: var(--color-accent-emerald);
+    border-color: var(--color-accent-emerald);
+    box-shadow: 0 0 8px var(--color-accent-emerald-glow);
+}
+
+.pipe-stage.fail {
+    border-color: rgba(239, 68, 68, 0.5);
+    background: rgba(239, 68, 68, 0.07);
+    animation: pipeShake 0.4s ease;
+}
+.pipe-stage.fail .pipe-dot {
+    background: var(--color-terminal-red);
+    border-color: var(--color-terminal-red);
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+}
+.pipe-stage.fail .pipe-name { color: var(--color-terminal-red); }
+
+.pipe-stage.retry .pipe-dot {
+    background: var(--color-terminal-yellow);
+    border-color: var(--color-terminal-yellow);
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+    animation: pipeDotPulse 0.7s ease-in-out infinite;
+}
+
+@keyframes pipeDotPulse {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.18); }
+}
+@keyframes pipeShake {
+    0%, 100% { transform: translateX(0); }
+    25%      { transform: translateX(-3px); }
+    75%      { transform: translateX(3px); }
+}
+
+/* ---------- Pipeline log stream ---------- */
+.pipeline-log {
+    flex: 1;
+    padding: 12px 18px;
+    min-height: 160px;
+    max-height: 220px;
+    overflow-y: auto;
+    color: var(--color-text-secondary);
+    font-size: 0.74rem;
+    line-height: 1.55;
+    background:
+        repeating-linear-gradient(0deg, transparent 0 23px, rgba(255,255,255,0.012) 23px 24px),
+        #050810;
+    border-bottom: 1px solid var(--color-border);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(20, 184, 166, 0.3) transparent;
+}
+
+.pipeline-log::-webkit-scrollbar { width: 6px; }
+.pipeline-log::-webkit-scrollbar-thumb {
+    background: rgba(20, 184, 166, 0.3);
+    border-radius: 3px;
+}
+
+.pipeline-log .log-line {
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+    opacity: 0;
+    transform: translateY(4px);
+    animation: logLineFade 0.3s ease forwards;
+    white-space: pre-wrap;
+}
+
+.pipeline-log .log-time {
+    color: var(--color-text-muted);
+    font-size: 0.65rem;
+    flex-shrink: 0;
+    width: 56px;
+}
+
+.pipeline-log .log-tag {
+    flex-shrink: 0;
+    font-weight: 700;
+    width: 78px;
+}
+
+.pipeline-log .log-msg {
+    color: var(--color-text-secondary);
+    flex: 1;
+    min-width: 0;
+}
+
+@keyframes logLineFade {
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- Observability strip ---------- */
+.obs-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    background: #040710;
+    border-top: 1px solid var(--color-border);
+}
+
+@media (max-width: 600px) {
+    .obs-strip { grid-template-columns: repeat(2, 1fr); }
+}
+
+.obs-cell {
+    padding: 12px 16px;
+    border-right: 1px solid var(--color-border);
+    position: relative;
+    overflow: hidden;
+}
+.obs-cell:last-child { border-right: none; }
+
+.obs-label {
+    font-size: 0.6rem;
+    color: var(--color-text-muted);
+    letter-spacing: 0.1em;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.obs-value {
+    font-size: 1.1rem;
+    color: var(--color-text-primary);
+    font-weight: 600;
+    font-family: var(--font-mono);
+    transition: color 0.5s ease;
+}
+
+.obs-value.flash-up   { color: var(--color-terminal-yellow); }
+.obs-value.flash-bad  { color: var(--color-terminal-red); }
+.obs-value.flash-good { color: var(--color-accent-emerald); }
+
+.obs-unit {
+    font-size: 0.7rem;
+    color: var(--color-text-muted);
+    margin-left: 2px;
+    font-weight: 400;
+}
+
+.obs-spark {
+    width: 100%;
+    height: 22px;
+    margin-top: 4px;
+    color: var(--color-accent-teal);
+    overflow: visible;
+}
+
+#spark-err  { color: var(--color-terminal-yellow); }
+#spark-rps  { color: var(--color-accent-emerald); }
+#spark-p95  { color: var(--color-accent-cyan); }
+
+.slo-pill {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--color-accent-emerald);
+    text-transform: uppercase;
+}
+.slo-pill.degraded {
+    border-color: rgba(245, 158, 11, 0.4);
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--color-terminal-yellow);
+}
+.slo-pill.breaching {
+    border-color: rgba(239, 68, 68, 0.5);
+    background: rgba(239, 68, 68, 0.12);
+    color: var(--color-terminal-red);
+    animation: sloAlert 1s ease-in-out infinite;
+}
+
+@keyframes sloAlert {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    50%      { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2); }
+}
+
+/* Deploy marker fly-in animation */
+.obs-deploy-marker {
+    position: absolute;
+    bottom: 8px;
+    right: 12px;
+    font-size: 0.62rem;
+    color: var(--color-accent-cyan);
+    font-weight: 700;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.obs-deploy-marker.visible {
+    opacity: 1;
+    transform: translateY(0);
+    animation: deployMarkerPulse 1.6s ease-out;
+}
+
+@keyframes deployMarkerPulse {
+    0%   { text-shadow: 0 0 8px rgba(6, 182, 212, 0.8); transform: translateY(8px); }
+    40%  { text-shadow: 0 0 12px rgba(6, 182, 212, 1); transform: translateY(0); }
+    100% { text-shadow: 0 0 0 rgba(6, 182, 212, 0); transform: translateY(0); }
+}
+
+/* Pipeline status label colors driven by .pipeline-console state */
+.pipeline-console.is-failed #pipeline-status-label { color: var(--color-terminal-red); }
+.pipeline-console.is-running #pipeline-status-label { color: var(--color-accent-teal); }
+.pipeline-console.is-success #pipeline-status-label { color: var(--color-accent-emerald); }
+
+.pipeline-console.is-failed .terminal-status-indicator .status-dot-mini {
+    background: var(--color-terminal-red);
+    box-shadow: 0 0 6px var(--color-terminal-red);
+}
+
+/* Reduced motion: kill the moving parts but keep the layout & color states */
+@media (prefers-reduced-motion: reduce) {
+    .pipeline-log .log-line { animation: none; opacity: 1; transform: none; }
+    .pipe-stage.active .pipe-dot,
+    .pipe-stage.retry .pipe-dot,
+    .slo-pill.breaching { animation: none; }
+    .pipe-stage::before { display: none; }
+    .obs-deploy-marker.visible { animation: none; }
+    .flow-node.is-active .node-icon,
+    .flow-node.is-fail .node-icon { animation: none; }
+    .flow-packet { display: none; }
+}

@@ -45,6 +45,7 @@
                 <ul class="nav-list">
                     <li><a href="#about" class="nav-link active">About</a></li>
                     <li><a href="#experience" class="nav-link">Experience</a></li>
+                    <li><a href="#platform" class="nav-link">Platform</a></li>
                     <li><a href="#projects" class="nav-link">Projects</a></li>
                     <li><a href="#skills" class="nav-link">Skills</a></li>
                     <li><a href="#certifications" class="nav-link">Certificates</a></li>
@@ -68,6 +69,7 @@
         <ul class="mobile-nav-list">
             <li><a href="#about" class="mobile-nav-link">About</a></li>
             <li><a href="#experience" class="mobile-nav-link">Experience</a></li>
+            <li><a href="#platform" class="mobile-nav-link">Platform</a></li>
             <li><a href="#projects" class="mobile-nav-link">Projects</a></li>
             <li><a href="#skills" class="mobile-nav-link">Skills</a></li>
             <li><a href="#certifications" class="mobile-nav-link">Certificates</a></li>
@@ -308,6 +310,227 @@
                                 <span class="tag">JavaScript (ES6+)</span>
                                 <span class="tag">HTML5 & CSS3</span>
                                 <span class="tag">SDLC</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Platform Engineering Live View — End-to-end pipeline + GitOps + observability -->
+        <section id="platform" class="platform-section scroll-reveal-section">
+            <div class="section-container">
+                <div class="section-header">
+                    <h2 class="section-title">Platform Engineering — Live View</h2>
+                    <div class="section-divider"></div>
+                    <p class="section-subtitle"><span class="t-accent">$</span> watch -n 0 'commit &rarr; build &rarr; test &rarr; iac &rarr; config &rarr; deploy &rarr; observe'</p>
+                </div>
+
+                <div class="platform-stage">
+                    <!-- LEFT: End-to-end DevOps flow diagram (animated SVG nodegraph) -->
+                    <div class="flow-console">
+                        <div class="terminal-header">
+                            <div class="terminal-header-left">
+                                <div class="terminal-buttons">
+                                    <span class="t-btn red"></span>
+                                    <span class="t-btn yellow"></span>
+                                    <span class="t-btn green"></span>
+                                </div>
+                                <span class="terminal-title">end-to-end-flow.dot</span>
+                            </div>
+                            <div class="terminal-header-right">
+                                <span class="terminal-status-indicator"><span class="status-dot-mini green pulsating"></span> <span id="flow-stage-label">idle</span></span>
+                            </div>
+                        </div>
+
+                        <div class="flow-canvas" id="flow-canvas" aria-hidden="true">
+                            <!-- Edges drawn first (z-index: behind nodes) -->
+                            <svg class="flow-edges" viewBox="0 0 600 460" preserveAspectRatio="none">
+                                <defs>
+                                    <linearGradient id="edge-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                        <stop offset="0%"  stop-color="#14b8a6" stop-opacity="0.0"/>
+                                        <stop offset="50%" stop-color="#14b8a6" stop-opacity="0.9"/>
+                                        <stop offset="100%" stop-color="#14b8a6" stop-opacity="0.0"/>
+                                    </linearGradient>
+                                    <filter id="packet-glow" x="-50%" y="-50%" width="200%" height="200%">
+                                        <feGaussianBlur stdDeviation="2.5" result="blur"/>
+                                        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                                    </filter>
+                                </defs>
+
+                                <!-- Edges: id matches the source→target stage transition -->
+                                <!-- Dev → GitHub -->
+                                <path class="flow-edge" id="edge-dev-scm"      d="M 50 80 C 110 80, 130 80, 170 80"></path>
+                                <!-- GitHub → Jenkins -->
+                                <path class="flow-edge" id="edge-scm-ci"       d="M 230 80 C 280 80, 290 80, 330 80"></path>
+                                <!-- Jenkins(build) → Jenkins(scan) → Jenkins(image) (3 inline sub-steps) -->
+                                <path class="flow-edge" id="edge-ci-build-scan" d="M 360 110 C 360 145, 360 145, 360 175"></path>
+                                <path class="flow-edge" id="edge-ci-scan-img"   d="M 360 205 C 360 235, 360 235, 360 265"></path>
+                                <!-- Jenkins → DockerHub registry -->
+                                <path class="flow-edge" id="edge-ci-registry"  d="M 390 290 C 460 290, 480 240, 530 220"></path>
+                                <!-- Image → GitHub (image-tag write-back: GitOps image-updater commits new tag to manifests repo) -->
+                                <path class="flow-edge edge-dashed edge-gitops" id="edge-img-scm" d="M 340 290 C 280 240, 240 160, 215 105"></path>
+                                <!-- Registry → ArgoCD -->
+                                <path class="flow-edge" id="edge-registry-cd" d="M 530 250 C 530 320, 360 350, 270 360"></path>
+                                <!-- GitHub → ArgoCD (app/helm manifests) -->
+                                <path class="flow-edge edge-dashed" id="edge-scm-cd"    d="M 200 110 C 200 220, 200 320, 240 360"></path>
+                                <!-- GitHub → IaC + Config (terraform/ansible code path) -->
+                                <path class="flow-edge edge-dashed" id="edge-scm-iac"   d="M 175 110 C 130 160, 110 200, 110 240"></path>
+                                <!-- IaC + Config → Kubernetes (provisioning + node config) -->
+                                <path class="flow-edge" id="edge-iac-k8s"      d="M 175 350 C 200 400, 230 425, 250 432"></path>
+                                <!-- ArgoCD → Kubernetes -->
+                                <path class="flow-edge" id="edge-cd-k8s"       d="M 270 390 C 270 410, 270 410, 270 430"></path>
+                                <!-- Kubernetes → Observability cluster -->
+                                <path class="flow-edge edge-telemetry" id="edge-k8s-obs"      d="M 310 430 C 400 430, 480 410, 530 380"></path>
+                                <!-- Observability → Dev (alerts loop back) -->
+                                <path class="flow-edge edge-dashed edge-alert" id="edge-obs-dev" d="M 530 350 C 540 200, 100 30, 50 60"></path>
+                            </svg>
+
+                            <!-- Animated packet that travels along the active edge -->
+                            <svg class="flow-packet-layer" viewBox="0 0 600 460" preserveAspectRatio="none">
+                                <circle class="flow-packet" id="flow-packet" r="5" cx="0" cy="0" filter="url(#packet-glow)"></circle>
+                            </svg>
+
+                            <!-- Nodes laid out absolutely over the SVG (percentage positions track viewBox) -->
+                            <div class="flow-node node-dev" data-node="dev" style="left:8.3%; top:17.4%;">
+                                <div class="node-icon node-emoji">👨‍💻</div>
+                                <div class="node-label">Developer</div>
+                            </div>
+
+                            <div class="flow-node node-scm" data-node="scm" style="left:33.3%; top:17.4%;">
+                                <div class="node-icon"><img src="assets/tech-logos/github.png" alt="" loading="lazy"></div>
+                                <div class="node-label">GitHub<span class="node-sub">SCM</span></div>
+                            </div>
+
+                            <!-- Jenkins CI grouped — 3 vertically stacked sub-steps inside a labeled cluster -->
+                            <div class="flow-cluster cluster-ci" style="left:55%; top:8%; width:18%; height:60%;">
+                                <span class="cluster-label">CI · Jenkins</span>
+                                <div class="flow-node node-ci-build" data-node="ci-build" style="left:50%; top:14%;">
+                                    <div class="node-icon"><img src="assets/tech-logos/jenkins.svg" alt="" loading="lazy"></div>
+                                    <div class="node-label">Build & Test<span class="node-sub">maven · pytest</span></div>
+                                </div>
+                                <div class="flow-node node-ci-scan" data-node="ci-scan" style="left:50%; top:43%;">
+                                    <div class="node-icon"><img src="assets/tech-logos/sonarqube.svg" alt="" loading="lazy"></div>
+                                    <div class="node-label">Scan<span class="node-sub">sonar · trivy</span></div>
+                                </div>
+                                <div class="flow-node node-ci-img" data-node="ci-img" style="left:50%; top:72%;">
+                                    <div class="node-icon"><img src="assets/tech-logos/docker.svg" alt="" loading="lazy"></div>
+                                    <div class="node-label">Image<span class="node-sub">docker build</span></div>
+                                </div>
+                            </div>
+
+                            <!-- IaC + Config sub-cluster: feeds Kubernetes from GitHub (provisioning + node config) -->
+                            <div class="flow-cluster cluster-cfg" style="left:7%; top:44%; width:22%; height:32%;">
+                                <span class="cluster-label">IaC + Config</span>
+                                <div class="flow-node node-tf" data-node="tf" style="left:24%; top:50%;">
+                                    <div class="node-icon"><img src="assets/tech-logos/terraform.svg" alt="" loading="lazy"></div>
+                                    <div class="node-label">Terraform</div>
+                                </div>
+                                <div class="flow-node node-ans" data-node="ans" style="left:74%; top:50%;">
+                                    <div class="node-icon"><img src="assets/tech-logos/ansible.svg" alt="" loading="lazy"></div>
+                                    <div class="node-label">Ansible</div>
+                                </div>
+                            </div>
+
+                            <div class="flow-node node-registry" data-node="registry" style="left:85%; top:43%;">
+                                <div class="node-icon"><img src="assets/tech-logos/docker.svg" alt="" loading="lazy"></div>
+                                <div class="node-label">Registry<span class="node-sub">dockerhub</span></div>
+                            </div>
+
+                            <div class="flow-node node-cd" data-node="cd" style="left:42%; top:75%;">
+                                <div class="node-icon"><img src="assets/tech-logos/argocd.svg" alt="" loading="lazy"></div>
+                                <div class="node-label">ArgoCD<span class="node-sub">GitOps CD</span></div>
+                            </div>
+
+                            <div class="flow-node node-k8s" data-node="k8s" style="left:42%; top:91%;">
+                                <div class="node-icon"><img src="assets/tech-logos/kubernetes.svg" alt="" loading="lazy"></div>
+                                <div class="node-label">Kubernetes<span class="node-sub">prod-eks</span></div>
+                            </div>
+
+                            <!-- Observability cluster (right-bottom) -->
+                            <div class="flow-cluster cluster-obs" style="left:68%; top:70%; width:30%; height:28%;">
+                                <span class="cluster-label">Observability</span>
+                                <div class="flow-node node-obs-metrics" data-node="obs-metrics" style="left:22%; top:50%;">
+                                    <div class="node-icon"><img src="assets/tech-logos/prometheus.svg" alt="" loading="lazy"></div>
+                                    <div class="node-label">Prom<span class="node-sub">metrics</span></div>
+                                </div>
+                                <div class="flow-node node-obs-logs" data-node="obs-logs" style="left:55%; top:50%;">
+                                    <div class="node-icon"><img src="assets/tech-logos/elasticsearch.svg" alt="" loading="lazy"></div>
+                                    <div class="node-label">ELK<span class="node-sub">logs</span></div>
+                                </div>
+                                <div class="flow-node node-obs-trace" data-node="obs-trace" style="left:85%; top:50%;">
+                                    <div class="node-icon"><img src="assets/tech-logos/jaeger.svg" alt="" loading="lazy"></div>
+                                    <div class="node-label">Jaeger<span class="node-sub">traces</span></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flow-footer">
+                            <span class="flow-legend"><span class="legend-swatch swatch-solid"></span> data path</span>
+                            <span class="flow-legend"><span class="legend-swatch swatch-dashed"></span> config / GitOps sync</span>
+                            <span class="flow-legend"><span class="legend-swatch swatch-alert"></span> alerts</span>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT: Pipeline + log stream + observability -->
+                    <div class="pipeline-console">
+                        <div class="terminal-header">
+                            <div class="terminal-header-left">
+                                <div class="terminal-buttons">
+                                    <span class="t-btn red"></span>
+                                    <span class="t-btn yellow"></span>
+                                    <span class="t-btn green"></span>
+                                </div>
+                                <span class="terminal-title" id="pipeline-title">pipeline.run #142</span>
+                            </div>
+                            <div class="terminal-header-right">
+                                <span class="terminal-status-indicator"><span class="status-dot-mini green pulsating"></span> <span id="pipeline-status-label">running</span></span>
+                            </div>
+                        </div>
+
+                        <ul class="pipeline-stages" id="pipeline-stages">
+                            <li class="pipe-stage" data-stage="commit"><span class="pipe-dot"></span><span class="pipe-name">COMMIT</span><span class="pipe-meta">github.com/bharath/platform</span></li>
+                            <li class="pipe-stage" data-stage="build"><span class="pipe-dot"></span><span class="pipe-name">BUILD</span><span class="pipe-meta">docker buildx</span></li>
+                            <li class="pipe-stage" data-stage="test"><span class="pipe-dot"></span><span class="pipe-name">TEST</span><span class="pipe-meta">pytest + integration</span></li>
+                            <li class="pipe-stage" data-stage="scan"><span class="pipe-dot"></span><span class="pipe-name">SCAN</span><span class="pipe-meta">trivy + sonar</span></li>
+                            <li class="pipe-stage" data-stage="iac-plan"><span class="pipe-dot"></span><span class="pipe-name">IAC PLAN</span><span class="pipe-meta">terraform plan</span></li>
+                            <li class="pipe-stage" data-stage="iac-apply"><span class="pipe-dot"></span><span class="pipe-name">IAC APPLY</span><span class="pipe-meta">terraform apply</span></li>
+                            <li class="pipe-stage" data-stage="config"><span class="pipe-dot"></span><span class="pipe-name">CONFIG</span><span class="pipe-meta">ansible + helm values</span></li>
+                            <li class="pipe-stage" data-stage="deploy"><span class="pipe-dot"></span><span class="pipe-name">DEPLOY</span><span class="pipe-meta">argocd sync</span></li>
+                            <li class="pipe-stage" data-stage="observe"><span class="pipe-dot"></span><span class="pipe-name">OBSERVE</span><span class="pipe-meta">prom + loki + grafana</span></li>
+                        </ul>
+
+                        <div class="pipeline-log" id="pipeline-log">
+                            <!-- Log lines injected via JS -->
+                        </div>
+
+                        <!-- Observability footer: live metrics that react to deploy events -->
+                        <div class="obs-strip">
+                            <div class="obs-cell">
+                                <div class="obs-label">P95 LATENCY</div>
+                                <div class="obs-value" id="obs-p95">87<span class="obs-unit">ms</span></div>
+                                <svg class="obs-spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true">
+                                    <polyline id="spark-p95" points="" fill="none" stroke="currentColor" stroke-width="1.5"></polyline>
+                                </svg>
+                            </div>
+                            <div class="obs-cell">
+                                <div class="obs-label">ERROR RATE</div>
+                                <div class="obs-value" id="obs-err">0.02<span class="obs-unit">%</span></div>
+                                <svg class="obs-spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true">
+                                    <polyline id="spark-err" points="" fill="none" stroke="currentColor" stroke-width="1.5"></polyline>
+                                </svg>
+                            </div>
+                            <div class="obs-cell">
+                                <div class="obs-label">RPS</div>
+                                <div class="obs-value" id="obs-rps">1.24<span class="obs-unit">k</span></div>
+                                <svg class="obs-spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true">
+                                    <polyline id="spark-rps" points="" fill="none" stroke="currentColor" stroke-width="1.5"></polyline>
+                                </svg>
+                            </div>
+                            <div class="obs-cell obs-cell-slo">
+                                <div class="obs-label">SLO BURN</div>
+                                <div class="obs-value"><span class="slo-pill" id="obs-slo">healthy</span></div>
+                                <div class="obs-deploy-marker" id="obs-deploy-marker" aria-hidden="true">▲ deploy</div>
                             </div>
                         </div>
                     </div>

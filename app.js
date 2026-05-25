@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initContactForm();
     initScrollSpy();
     initAntiGravity();
+    initPlatformPipeline();
 });
 
 // ==========================================================================
@@ -892,5 +893,480 @@ function initAntiGravity() {
         if (!e.target.closest('.swarm-item')) {
             document.querySelectorAll('.swarm-item.is-tapped').forEach(el => el.classList.remove('is-tapped'));
         }
+    });
+}
+
+// ==========================================================================
+// PLATFORM ENGINEERING — LIVE VIEW
+// Orchestrates a continuous loop: a commit lands on the GitOps graph,
+// the pipeline (commit → build → test → scan → iac plan/apply → config →
+// deploy → observe) runs stage-by-stage with realistic logs, and the
+// observability strip reacts (latency dips, RPS climbs, SLO pills toggle,
+// deploy marker fires). Occasional fail/retry paths add believability.
+// ==========================================================================
+function initPlatformPipeline() {
+    const stagesRoot = document.getElementById('pipeline-stages');
+    if (!stagesRoot) return;
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const flowCanvas = document.getElementById('flow-canvas');
+    const flowStageLabel = document.getElementById('flow-stage-label');
+    const flowPacket = document.getElementById('flow-packet');
+    const pipelineConsole = document.querySelector('.pipeline-console');
+    const pipelineTitle = document.getElementById('pipeline-title');
+    const pipelineStatusLabel = document.getElementById('pipeline-status-label');
+    const logEl = document.getElementById('pipeline-log');
+    const stages = Array.from(stagesRoot.querySelectorAll('.pipe-stage'));
+
+    const obsP95 = document.getElementById('obs-p95');
+    const obsErr = document.getElementById('obs-err');
+    const obsRps = document.getElementById('obs-rps');
+    const obsSlo = document.getElementById('obs-slo');
+    const obsMarker = document.getElementById('obs-deploy-marker');
+    const sparkP95 = document.getElementById('spark-p95');
+    const sparkErr = document.getElementById('spark-err');
+    const sparkRps = document.getElementById('spark-rps');
+
+    // ------- Commit catalog (cycles, story-driven) -------
+    const commits = [
+        { type: 'feat',  msg: 'add HPA + PDB to payment-gateway',         tag: null },
+        { type: 'fix',   msg: 'redis connection timeout under burst load', tag: null },
+        { type: 'feat',  msg: 'argocd app-of-apps for staging cluster',   tag: null },
+        { type: 'chore', msg: 'helm chart values for canary rollout',     tag: null },
+        { type: 'feat',  msg: 'prometheus servicemonitor + recording rules', tag: 'v1.4.3' },
+        { type: 'fix',   msg: 'terraform: tighten eks node_group IAM',    tag: null },
+        { type: 'feat',  msg: 'opentelemetry collector sidecar',          tag: null },
+        { type: 'chore', msg: 'bump istio 1.22 → 1.23 mesh upgrade',      tag: null },
+        { type: 'feat',  msg: 'loki: structured logs + log-based alerts', tag: null },
+        { type: 'fix',   msg: 'ansible: idempotent kernel sysctls',       tag: null },
+    ];
+    let commitIdx = 0;
+    let runNumber = 142;
+    const HASH_CHARS = '0123456789abcdef';
+    const randHash = () => Array.from({ length: 7 }, () => HASH_CHARS[Math.floor(Math.random() * 16)]).join('');
+
+    // ------- Flow diagram: stage → nodes that should glow + edges to traverse -------
+    // Each pipeline stage maps to which left-panel nodes light up and which edge
+    // the packet flies along, so the diagram visually narrates what's happening.
+    const flowMap = {
+        commit:     { nodes: ['dev', 'scm'],          edges: ['edge-dev-scm'],                          cluster: null },
+        build:      { nodes: ['scm', 'ci-build'],     edges: ['edge-scm-ci'],                           cluster: 'cluster-ci' },
+        test:       { nodes: ['ci-build'],            edges: [],                                        cluster: 'cluster-ci' },
+        scan:       { nodes: ['ci-scan'],             edges: ['edge-ci-build-scan'],                    cluster: 'cluster-ci' },
+        'iac-plan': { nodes: ['scm', 'tf'],           edges: ['edge-scm-iac'],                          cluster: 'cluster-cfg' },
+        'iac-apply':{ nodes: ['tf', 'ans', 'k8s'],    edges: ['edge-iac-k8s'],                          cluster: 'cluster-cfg' },
+        config:     { nodes: ['ans', 'ci-img'],       edges: ['edge-ci-scan-img'],                      cluster: 'cluster-ci' },
+        deploy:     { nodes: ['ci-img', 'scm', 'registry', 'cd', 'k8s'], edges: ['edge-img-scm', 'edge-ci-registry', 'edge-registry-cd', 'edge-scm-cd', 'edge-cd-k8s'], cluster: null },
+        observe:    { nodes: ['k8s', 'obs-metrics', 'obs-logs', 'obs-trace'], edges: ['edge-k8s-obs'], cluster: 'cluster-obs', telemetry: true },
+    };
+
+    const allFlowNodes = Array.from(flowCanvas.querySelectorAll('.flow-node'));
+    const allFlowEdges = Array.from(flowCanvas.querySelectorAll('.flow-edge'));
+    const allFlowClusters = Array.from(flowCanvas.querySelectorAll('.flow-cluster'));
+
+    const clearFlowState = () => {
+        allFlowNodes.forEach(n => n.classList.remove('is-active', 'is-success', 'is-fail'));
+        allFlowEdges.forEach(e => e.classList.remove('is-active'));
+        allFlowClusters.forEach(c => c.classList.remove('is-active'));
+    };
+
+    const markFlowSuccess = (stageKey) => {
+        const m = flowMap[stageKey];
+        if (!m) return;
+        m.nodes.forEach(id => {
+            const n = flowCanvas.querySelector(`[data-node="${id}"]`);
+            if (n) {
+                n.classList.remove('is-active');
+                n.classList.add('is-success');
+            }
+        });
+        m.edges.forEach(eid => {
+            const e = document.getElementById(eid);
+            if (e) e.classList.remove('is-active');
+        });
+        if (m.cluster) {
+            const c = flowCanvas.querySelector(`.${m.cluster}`);
+            if (c) c.classList.remove('is-active');
+        }
+    };
+
+    const markFlowFail = (stageKey) => {
+        const m = flowMap[stageKey];
+        if (!m) return;
+        m.nodes.forEach(id => {
+            const n = flowCanvas.querySelector(`[data-node="${id}"]`);
+            if (n) {
+                n.classList.remove('is-active');
+                n.classList.add('is-fail');
+            }
+        });
+    };
+
+    // Animate the packet along an edge path. JS uses the SVG path's
+    // getPointAtLength API to compute exact (x,y) along the curve.
+    const flyPacket = (edgeId, kind = 'data', durationMs = 900) => {
+        if (reduceMotion) return Promise.resolve();
+        const path = document.getElementById(edgeId);
+        if (!path) return Promise.resolve();
+        const total = path.getTotalLength();
+        if (!total) return Promise.resolve();
+
+        flowPacket.classList.remove('is-telemetry', 'is-alert', 'is-gitops');
+        if (kind === 'telemetry') flowPacket.classList.add('is-telemetry');
+        if (kind === 'alert') flowPacket.classList.add('is-alert');
+        if (kind === 'gitops') flowPacket.classList.add('is-gitops');
+
+        return new Promise((resolve) => {
+            const start = performance.now();
+            flowPacket.classList.add('is-flying');
+            const tick = (now) => {
+                const t = Math.min(1, (now - start) / durationMs);
+                const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+                const pt = path.getPointAtLength(eased * total);
+                flowPacket.setAttribute('cx', pt.x);
+                flowPacket.setAttribute('cy', pt.y);
+                if (t < 1) requestAnimationFrame(tick);
+                else {
+                    flowPacket.classList.remove('is-flying');
+                    resolve();
+                }
+            };
+            requestAnimationFrame(tick);
+        });
+    };
+
+    // Activate a stage on the left flow diagram (light up nodes, glow the edge,
+    // fly a packet along it). This runs in parallel with the right-panel logs.
+    const activateFlowStage = async (stageKey) => {
+        const m = flowMap[stageKey];
+        if (!m) return;
+        flowStageLabel.textContent = stageKey.replace('-', ' ');
+
+        // Activate nodes + cluster
+        m.nodes.forEach(id => {
+            const n = flowCanvas.querySelector(`[data-node="${id}"]`);
+            if (n) {
+                n.classList.remove('is-success', 'is-fail');
+                n.classList.add('is-active');
+            }
+        });
+        if (m.cluster) {
+            const c = flowCanvas.querySelector(`.${m.cluster}`);
+            if (c) c.classList.add('is-active');
+        }
+
+        // Activate edges, then fly packets along them sequentially
+        for (const eid of m.edges) {
+            const e = document.getElementById(eid);
+            if (e) e.classList.add('is-active');
+            const isGitops = e && e.classList.contains('edge-gitops');
+            const kind = m.telemetry ? 'telemetry' : (isGitops ? 'gitops' : 'data');
+            await flyPacket(eid, kind, 700);
+        }
+    };
+
+    // ------- Logging helpers -------
+    const now = () => {
+        const d = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    };
+
+    const log = (tag, tagClass, msg) => {
+        const line = document.createElement('div');
+        line.className = 'log-line';
+        line.innerHTML = `
+            <span class="log-time">${now()}</span>
+            <span class="log-tag ${tagClass}">${tag}</span>
+            <span class="log-msg">${msg}</span>
+        `;
+        logEl.appendChild(line);
+        logEl.scrollTop = logEl.scrollHeight;
+        // Trim very old lines so the DOM stays light
+        while (logEl.children.length > 80) logEl.removeChild(logEl.firstChild);
+    };
+
+    const clearLogs = () => { logEl.innerHTML = ''; };
+
+    // ------- Stage state machine -------
+    const setStageState = (stageEl, state) => {
+        stageEl.classList.remove('active', 'success', 'fail', 'retry');
+        if (state) stageEl.classList.add(state);
+    };
+
+    const resetStages = () => stages.forEach(s => setStageState(s, ''));
+
+    const setRunStatus = (state, label) => {
+        pipelineConsole.classList.remove('is-running', 'is-failed', 'is-success');
+        pipelineConsole.classList.add(`is-${state}`);
+        if (label) pipelineStatusLabel.textContent = label;
+    };
+
+    // ------- Stage drivers — what each stage logs and how long it takes -------
+    const stageScripts = {
+        commit: (ctx) => [
+            ['t-info', `webhook received: push origin main (${ctx.hash})`],
+            ['t-accent', `author: ${ctx.author}  ·  msg: "${ctx.msg}"`],
+        ],
+        build: (ctx) => [
+            ['t-accent', `docker buildx build --platform linux/amd64 -t ${ctx.image} .`],
+            ['t-info', `Step 4/9 : COPY requirements.txt /app/`],
+            ['t-info', `Step 7/9 : RUN go test ./... -short`],
+            ['t-healed', `✔ image pushed: registry.io/${ctx.image}  (sha256:${ctx.imageSha}…)`],
+        ],
+        test: (ctx) => [
+            ['t-accent', `pytest -n auto --cov=src tests/`],
+            ['t-info', `collected 412 items · ran 412 passed · 0 failed · 12.4s`],
+            ['t-healed', `✔ coverage: 87.3%  (gate: 80%)`],
+        ],
+        scan: (ctx) => [
+            ['t-accent', `trivy image --severity HIGH,CRITICAL ${ctx.image}`],
+            ['t-info', `${ctx.scanFindings} HIGH · 0 CRITICAL · sonar quality gate: PASSED`],
+            ['t-healed', `✔ supply chain attest signed (cosign)`],
+        ],
+        'iac-plan': (ctx) => [
+            ['t-accent', `terraform plan -out=tfplan  (workspace: prod-eks)`],
+            ['t-info', `Plan: ${ctx.tfAdd} to add, ${ctx.tfChange} to change, 0 to destroy.`],
+            ['t-info', `+ aws_eks_node_group.workers["${ctx.az}"]  (count: 3 → 4)`],
+            ['t-info', `~ aws_security_group_rule.api_ingress     (cidr_blocks)`],
+        ],
+        'iac-apply': (ctx) => [
+            ['t-accent', `terraform apply tfplan`],
+            ['t-info', `aws_eks_node_group.workers: Modifying... [10s elapsed]`],
+            ['t-info', `aws_eks_node_group.workers: Modifications complete after 1m42s`],
+            ['t-healed', `✔ Apply complete! Resources: ${ctx.tfAdd} added, ${ctx.tfChange} changed.`],
+        ],
+        config: (ctx) => [
+            ['t-accent', `ansible-playbook -i aws_ec2.yml site.yml --tags configmap,secrets`],
+            ['t-info', `TASK [k8s : reconcile ConfigMap payment-gateway-cfg] *********`],
+            ['t-info', `helm upgrade --install payment-gateway ./charts/api -f values.prod.yaml`],
+            ['t-healed', `✔ PLAY RECAP — ok=23 changed=4 unreachable=0 failed=0`],
+        ],
+        deploy: (ctx) => [
+            ['t-accent', `argocd app sync payment-gateway --prune --strategy=blue-green`],
+            ['t-info', `Sync status: OutOfSync → Syncing → Synced`],
+            ['t-info', `rollout: 25% canary → 50% → 100%   (analysisRun: SUCCESS)`],
+            ['t-healed', `✔ revision ${ctx.hash} healthy on prod-eks (${ctx.replicas} replicas)`],
+        ],
+        observe: (ctx) => [
+            ['t-accent', `prometheus: deploy annotation pushed`],
+            ['t-info', `loki: log volume +${ctx.logSurge}% (post-deploy normalisation)`],
+            ['t-info', `grafana: dashboard "API SLO" — error budget burn rate stable`],
+            ['t-healed', `✔ run #${ctx.run} — green across all SLOs`],
+        ],
+    };
+
+    // ------- Observability state — sparklines + live values -------
+    const sparkData = { p95: [], err: [], rps: [] };
+    const SPARK_LEN = 40;
+
+    const seedSparks = () => {
+        for (let i = 0; i < SPARK_LEN; i++) {
+            sparkData.p95.push(80 + Math.random() * 18);
+            sparkData.err.push(0.01 + Math.random() * 0.05);
+            sparkData.rps.push(1100 + Math.random() * 240);
+        }
+        renderSparks();
+    };
+
+    const pointsFor = (data, max, min) => {
+        const range = max - min || 1;
+        return data.map((v, i) => {
+            const x = (i / (SPARK_LEN - 1)) * 100;
+            const y = 22 - ((v - min) / range) * 20;
+            return `${x.toFixed(2)},${y.toFixed(2)}`;
+        }).join(' ');
+    };
+
+    const renderSparks = () => {
+        sparkP95.setAttribute('points', pointsFor(sparkData.p95, 140, 60));
+        sparkErr.setAttribute('points', pointsFor(sparkData.err, 0.25, 0));
+        sparkRps.setAttribute('points', pointsFor(sparkData.rps, 1800, 800));
+    };
+
+    const flashValue = (el, kind) => {
+        el.classList.remove('flash-up', 'flash-bad', 'flash-good');
+        el.classList.add(`flash-${kind}`);
+        setTimeout(() => el.classList.remove(`flash-${kind}`), 600);
+    };
+
+    // Drift the values continuously so the strip always feels alive
+    const startObservabilityDrift = () => {
+        if (reduceMotion) return;
+        setInterval(() => {
+            const p95Last = sparkData.p95[sparkData.p95.length - 1];
+            const errLast = sparkData.err[sparkData.err.length - 1];
+            const rpsLast = sparkData.rps[sparkData.rps.length - 1];
+
+            const nextP95 = Math.max(60, Math.min(140, p95Last + (Math.random() - 0.5) * 6));
+            const nextErr = Math.max(0, Math.min(0.25, errLast + (Math.random() - 0.5) * 0.015));
+            const nextRps = Math.max(800, Math.min(1800, rpsLast + (Math.random() - 0.5) * 80));
+
+            sparkData.p95.push(nextP95); sparkData.p95.shift();
+            sparkData.err.push(nextErr); sparkData.err.shift();
+            sparkData.rps.push(nextRps); sparkData.rps.shift();
+
+            obsP95.firstChild.textContent = Math.round(nextP95);
+            obsErr.firstChild.textContent = nextErr.toFixed(2);
+            obsRps.firstChild.textContent = (nextRps / 1000).toFixed(2);
+
+            renderSparks();
+        }, 1100);
+    };
+
+    // ------- Deploy reaction — fired when DEPLOY stage succeeds -------
+    const reactToDeploy = () => {
+        // Brief latency dip + RPS bump + deploy marker
+        for (let i = 0; i < 6; i++) {
+            sparkData.p95[SPARK_LEN - 1 - i] = 70 + Math.random() * 8;
+            sparkData.rps[SPARK_LEN - 1 - i] = 1500 + Math.random() * 200;
+        }
+        renderSparks();
+        flashValue(obsP95, 'good');
+        flashValue(obsRps, 'good');
+        obsMarker.classList.add('visible');
+        setTimeout(() => obsMarker.classList.remove('visible'), 1800);
+
+        obsSlo.className = 'slo-pill';
+        obsSlo.textContent = 'healthy';
+    };
+
+    const reactToFail = () => {
+        flashValue(obsErr, 'bad');
+        obsSlo.className = 'slo-pill breaching';
+        obsSlo.textContent = 'breaching';
+        for (let i = 0; i < 5; i++) {
+            sparkData.err[SPARK_LEN - 1 - i] = 0.18 + Math.random() * 0.05;
+        }
+        renderSparks();
+    };
+
+    // ------- Run a single stage -------
+    const runStage = (stageEl, ctx, opts = {}) => new Promise((resolve) => {
+        setStageState(stageEl, 'active');
+        const stageKey = stageEl.dataset.stage;
+        // Light up the matching nodes + edges on the left flow diagram
+        activateFlowStage(stageKey);
+
+        const lines = (stageScripts[stageKey] || (() => []))(ctx);
+        const interLine = reduceMotion ? 0 : 380;
+        const stageDuration = reduceMotion ? 80 : 700 + lines.length * interLine;
+
+        // Stagger log lines for that "live tail" feel
+        lines.forEach((entry, i) => {
+            const [tagClass, msg] = entry;
+            const tag = '[' + stageKey.toUpperCase().replace('-', ' ') + ']';
+            setTimeout(() => log(tag, tagClass, msg), i * interLine);
+        });
+
+        setTimeout(() => {
+            if (opts.fail) {
+                setStageState(stageEl, 'fail');
+                markFlowFail(stageKey);
+                log('[ERROR]', 't-error', `stage "${stageKey}" failed: ${opts.failReason}`);
+                reactToFail();
+                // Fly an alert packet back to the dev (loops back the error)
+                flyPacket('edge-obs-dev', 'alert', 1100);
+                document.getElementById('edge-obs-dev').classList.add('is-active');
+                setTimeout(() => document.getElementById('edge-obs-dev').classList.remove('is-active'), 1400);
+                resolve('fail');
+            } else {
+                setStageState(stageEl, 'success');
+                markFlowSuccess(stageKey);
+                if (stageKey === 'deploy') reactToDeploy();
+                resolve('success');
+            }
+        }, stageDuration);
+    });
+
+    // ------- One full pipeline run -------
+    const runPipeline = async () => {
+        runNumber++;
+        const commit = commits[commitIdx % commits.length];
+        commitIdx++;
+
+        const hash = randHash();
+
+        const ctx = {
+            run: runNumber,
+            hash,
+            msg: commit.msg,
+            author: 'bharath',
+            image: `payment-gateway:${hash}`,
+            imageSha: randHash() + randHash(),
+            scanFindings: Math.floor(Math.random() * 3),
+            tfAdd: 1 + Math.floor(Math.random() * 4),
+            tfChange: Math.floor(Math.random() * 5),
+            az: ['us-east-1a', 'us-east-1b', 'eu-west-1a'][Math.floor(Math.random() * 3)],
+            replicas: 4 + Math.floor(Math.random() * 4),
+            logSurge: 8 + Math.floor(Math.random() * 14),
+        };
+
+        clearLogs();
+        clearFlowState();
+        resetStages();
+        setRunStatus('running', `running #${runNumber}`);
+        pipelineTitle.textContent = `pipeline.run #${runNumber}`;
+
+        // 18% chance of an injected failure (NOT on commit/observe; those are bookends)
+        const failableStages = stages.filter(s => !['commit', 'observe'].includes(s.dataset.stage));
+        const willFail = Math.random() < 0.18;
+        const failStage = willFail ? failableStages[Math.floor(Math.random() * failableStages.length)] : null;
+        const failReasons = {
+            build: 'image too large (>1.2GB) — multi-stage cleanup required',
+            test: '3 integration tests failed — flaky postgres fixture',
+            scan: '1 CRITICAL CVE detected (CVE-2025-1337) — base image bump',
+            'iac-plan': 'drift detected on aws_eks_cluster.platform — manual review',
+            'iac-apply': 'aws throttling: RequestLimitExceeded — retrying',
+            config: 'helm: schema validation failed for values.prod.yaml',
+            deploy: 'argocd: app health degraded — auto-rolling back',
+        };
+
+        for (const stage of stages) {
+            const isFail = (stage === failStage);
+            const result = await runStage(stage, ctx, isFail ? { fail: true, failReason: failReasons[stage.dataset.stage] } : {});
+            if (result === 'fail') {
+                // Retry path: pause, retry once, succeed.
+                await new Promise(r => setTimeout(r, reduceMotion ? 80 : 900));
+                setStageState(stage, 'retry');
+                log('[RETRY]', 't-warn', `auto-retry ${stage.dataset.stage} (attempt 2/2)…`);
+                await new Promise(r => setTimeout(r, reduceMotion ? 80 : 1200));
+                await runStage(stage, ctx, {});
+                obsSlo.className = 'slo-pill';
+                obsSlo.textContent = 'recovered';
+            }
+        }
+
+        setRunStatus('success', `✔ run #${runNumber} green`);
+        await new Promise(r => setTimeout(r, reduceMotion ? 200 : 3500));
+    };
+
+    // ------- Boot -------
+    seedSparks();
+    startObservabilityDrift();
+
+    // Only run when section is in viewport — saves CPU on a long page
+    let isRunning = false;
+    const startLoop = async () => {
+        if (isRunning) return;
+        isRunning = true;
+        // Run forever (or until tab hidden — see visibilitychange below)
+        while (isRunning) {
+            await runPipeline();
+        }
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) startLoop();
+            else isRunning = false;
+        });
+    }, { threshold: 0.15 });
+    observer.observe(document.getElementById('platform'));
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) isRunning = false;
+        else if (document.getElementById('platform').getBoundingClientRect().top < window.innerHeight) startLoop();
     });
 }
