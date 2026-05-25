@@ -573,11 +573,21 @@ function initContactForm() {
     const buildMailtoFallback = (name, email, message) =>
         `<a href="mailto:${RECIPIENT_EMAIL}?subject=Portfolio Contact from ${encodeURIComponent(name)}&body=${encodeURIComponent(message)}%0D%0A%0D%0AReply to: ${encodeURIComponent(email)}" class="btn btn-secondary btn-sm" style="margin-top:10px; display:inline-flex;"><span>Open Direct Webmail Link</span></a>`;
 
-    // Netlify Forms only intercept submissions on a deployed Netlify site.
-    // Locally (file:// or localhost), there is no backend — fall back to mailto
-    // so the form is never silently broken during dev.
-    const isNetlifyHosted = !/^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])$/.test(window.location.hostname)
-        && window.location.protocol !== 'file:';
+    const isLocalDev = /^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])$/.test(window.location.hostname)
+        || window.location.protocol === 'file:';
+
+    // Build the URL-encoded body in the exact shape Netlify expects:
+    //   form-name=contact&name=...&email=...&message=...&bot-field=
+    const buildNetlifyBody = () => {
+        const data = new FormData(form);
+        // Force form-name to come first; some Netlify deploys are picky if it's missing.
+        const params = new URLSearchParams();
+        params.append('form-name', form.getAttribute('name') || 'contact');
+        for (const [key, value] of data.entries()) {
+            if (key !== 'form-name') params.append(key, value);
+        }
+        return params.toString();
+    };
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -615,9 +625,7 @@ function initContactForm() {
             `;
         };
 
-        if (!isNetlifyHosted) {
-            // Local dev — Netlify Forms isn't available. Show a dev-mode notice
-            // routing the user to mailto.
+        if (isLocalDev) {
             setTimeout(() => {
                 restoreButton();
                 showFailure('local dev mode (deploy to Netlify for live form)');
@@ -625,20 +633,35 @@ function initContactForm() {
             return;
         }
 
-        // Production: POST form-encoded body to "/" — Netlify intercepts.
-        try {
-            const payload = new URLSearchParams(new FormData(form)).toString();
-            const response = await fetch('/', {
+        const body = buildNetlifyBody();
+
+        // Try POSTing to the current page path (works whether served at "/", "/index.html", or a sub-path).
+        // If that 404s, retry the canonical "/" — covers either Netlify configuration.
+        const tryPost = async (url) => {
+            return fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: payload,
+                body,
             });
-            restoreButton();
-            if (response.ok) {
-                showSuccess();
-            } else {
-                showFailure(`status ${response.status}`);
+        };
+
+        try {
+            let response = await tryPost(window.location.pathname || '/');
+            if (response.status === 404) {
+                response = await tryPost('/');
             }
+            if (response.ok) {
+                restoreButton();
+                showSuccess();
+                return;
+            }
+
+            // Final fallback: native form submission. The browser navigates to
+            // Netlify's success page and the message is delivered. Less elegant,
+            // but it works even when fetch-based detection fails.
+            statusText.innerHTML = '<span class="t-accent">[SEND]</span> Falling back to native submission...';
+            form.dataset.bypassJs = 'true';
+            HTMLFormElement.prototype.submit.call(form);
         } catch (err) {
             restoreButton();
             showFailure('network unreachable');
