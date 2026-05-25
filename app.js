@@ -727,7 +727,10 @@ function initAntiGravity() {
                 { name: 'GitLab', file: 'gitlab' },
                 { name: 'CircleCI', file: 'circleci' },
                 { name: 'ArgoCD', file: 'argocd' },
-                { name: 'GitHub Actions', file: 'githubactions' }
+                { name: 'GitHub Actions', file: 'githubactions' },
+                { name: 'SonarQube', file: 'sonarqube' },
+                { name: 'Trivy', file: 'trivy', ext: '.png' },
+                { name: 'Snyk (SAST/DAST)', file: 'snyk', ext: '.png' }
             ]
         },
         cloud: {
