@@ -104,9 +104,9 @@ function initTypedSubtitle() {
 
     const roles = [
         "Cloud & DevOps Engineer",
-        "SRE / Platform Engineer",
-        "AIOps & MLOps Engineer",
-        "Systems Automation Developer",
+        "SRE & Platform Engineering",
+        "AIOps & MLOps Developer",
+        "Systems Automation",
         "SAP Labs BTP Intern"
     ];
 
@@ -758,7 +758,7 @@ function initAntiGravity() {
             items: [
                 { name: 'Python', file: 'python' },
                 { name: 'LangChain', file: 'langchain' },
-                { name: 'Anthropic', file: 'anthropic' },
+                { name: 'OpenAI', file: 'openai', ext: '.png' },
                 { name: 'PyTorch', file: 'pytorch' },
                 { name: 'TensorFlow', file: 'tensorflow' },
                 { name: 'Gemini', file: 'gemini', ext: '.png' },
