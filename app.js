@@ -602,26 +602,51 @@ function initContactForm() {
         return;
     }
 
-    // Production (Netlify): let the browser do a native form submission.
-    // This is the most reliable path — fetch-based AJAX submissions depend on
-    // Netlify's HTML scanner picking up the form at build time, which has been
-    // unreliable. A native POST is intercepted by Netlify's edge regardless.
-    // Show a "transmitting" state while the browser navigates to the success page.
-
-    // If we just returned from a successful submit, show the success message.
-    if (sessionStorage.getItem('contact-form-submitted') === 'true') {
-        sessionStorage.removeItem('contact-form-submitted');
-        statusText.className = 'form-status success';
-        statusText.innerHTML = '<span class="t-accent">[OK]</span> Status 202 — message accepted. I\'ll reply from ' + RECIPIENT_EMAIL + ' shortly.';
-    }
-
-    form.addEventListener('submit', () => {
-        sessionStorage.setItem('contact-form-submitted', 'true');
+    // Production (Netlify): use AJAX fetch submission
+    form.addEventListener('submit', (e) => {
+        e.preventDefault(); // Prevent native navigation which causes 404s
+        
         submitBtn.disabled = true;
         btnSpan.textContent = 'Transmitting...';
         statusText.className = 'form-status';
         statusText.innerHTML = '<span class="t-accent">[SEND]</span> Uploading payload variables to smtp.gateway...';
-        // Do not call e.preventDefault() — we want the native submit to proceed.
+
+        const formData = new FormData(form);
+        const searchParams = new URLSearchParams();
+        for (const pair of formData) {
+            searchParams.append(pair[0], pair[1]);
+        }
+
+        fetch('/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: searchParams.toString()
+        })
+        .then(() => {
+            setTimeout(() => {
+                form.reset();
+                submitBtn.disabled = false;
+                btnSpan.textContent = 'Execute Transmission';
+                statusText.className = 'form-status success';
+                statusText.innerHTML = '<span class="t-accent">[OK]</span> Status 202 — message accepted. I\'ll reply shortly.';
+            }, 800);
+        })
+        .catch((error) => {
+            setTimeout(() => {
+                submitBtn.disabled = false;
+                btnSpan.textContent = 'Execute Transmission';
+                statusText.className = 'form-status error';
+                statusText.innerHTML = `
+                    <span class="t-error">[ERR] Transmission failed.</span><br>
+                    <span>Please use the direct webmail fallback below.</span><br>
+                    ${buildMailtoFallback(
+                        document.getElementById('form-name').value, 
+                        document.getElementById('form-email').value, 
+                        document.getElementById('form-message').value
+                    )}
+                `;
+            }, 800);
+        });
     });
 }
 
