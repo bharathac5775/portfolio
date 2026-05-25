@@ -693,6 +693,7 @@ a {
 .t-warn { color: var(--color-terminal-yellow); }
 .t-info { color: var(--color-accent-cyan); }
 .t-healed { color: var(--color-accent-emerald); font-weight: bold; }
+.t-error { color: var(--color-terminal-red); font-weight: bold; }
 
 /* Dashboard Widget inside terminal */
 .terminal-dashboard {
@@ -1327,6 +1328,9 @@ a {
     overflow: hidden;
 }
 
+/* ==========================================================================
+   TECH ECOSYSTEM — CONSTELLATION GRAPH
+   ========================================================================== */
 .orbit-canvas {
     position: relative;
     overflow: hidden;
@@ -1350,7 +1354,7 @@ a {
 .hub-core {
     position: absolute;
     padding: 10px 20px;
-    background: rgba(20, 184, 166, 0.1);
+    background: rgba(3, 7, 18, 0.85);
     border: 2px solid var(--color-accent-teal);
     border-radius: 30px;
     color: var(--color-accent-teal);
@@ -1359,8 +1363,8 @@ a {
     letter-spacing: 2px;
     font-size: 0.8rem;
     box-shadow: 0 0 20px var(--color-accent-teal-glow);
-    z-index: 10;
-    backdrop-filter: blur(4px);
+    z-index: 50;
+    backdrop-filter: blur(6px);
     pointer-events: none;
 }
 
@@ -1368,6 +1372,11 @@ a {
     position: absolute;
     width: 50px;
     height: 50px;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1381,6 +1390,7 @@ a {
     animation-timing-function: ease-in-out;
     animation-iteration-count: infinite;
     animation-direction: alternate;
+    z-index: 5;
 }
 
 .swarm-item img {
@@ -1391,13 +1401,48 @@ a {
     transition: transform 0.3s ease;
 }
 
-.swarm-item:hover {
-    background: rgba(255, 255, 255, 0.15);
+.swarm-item:hover,
+.swarm-item:focus-visible {
+    background: rgba(15, 23, 42, 0.95);
     border-color: var(--color-accent-teal);
-    box-shadow: 0 0 15px var(--color-accent-teal-glow);
+    box-shadow: 0 0 20px var(--color-accent-teal-glow);
     z-index: 200;
     animation-play-state: paused !important;
-    transform: scale(1.3) !important;
+    transform: scale(1.35) !important;
+    outline: none;
+}
+
+/* Custom Name Label on Hover/Click */
+.swarm-item::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: -32px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-4px);
+    background: rgba(3, 7, 18, 0.95);
+    color: var(--color-accent-teal);
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 600;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    border: 1px solid var(--color-accent-teal);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+    z-index: 210;
+    pointer-events: none;
+    letter-spacing: 0.5px;
+}
+
+.swarm-item:hover::after,
+.swarm-item:focus-visible::after,
+.swarm-item.is-tapped::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
 }
 
 @keyframes hubDrift {
@@ -1418,6 +1463,27 @@ a {
     33% { transform: translate(-20px, 15px) scale(0.95); }
     66% { transform: translate(25px, -10px) scale(1.05); }
     100% { transform: translate(0, 0) scale(1); }
+}
+
+/* Tablet — shrink stage and hubs proportionally */
+@media (max-width: 1024px) {
+    .orbit-canvas { height: 700px; }
+    .swarm-item { width: 46px; height: 46px; }
+}
+
+/* Mobile — keep orbital metaphor but tighten hub footprint and node size */
+@media (max-width: 768px) {
+    .orbit-canvas { height: 600px; }
+    .tech-hub { width: 48%; height: 48%; }
+    .hub-core { font-size: 0.65rem; padding: 6px 12px; letter-spacing: 1.4px; }
+    .swarm-item { width: 40px; height: 40px; border-radius: 10px; }
+    .swarm-item::after { font-size: 0.6rem; bottom: -26px; padding: 3px 7px; }
+}
+
+@media (max-width: 480px) {
+    .orbit-canvas { height: 540px; }
+    .swarm-item { width: 36px; height: 36px; }
+    .hub-core { font-size: 0.55rem; padding: 5px 10px; }
 }
 
 /* ==========================================================================
@@ -2041,5 +2107,62 @@ textarea.form-input {
     
     .hero-cta-group .btn {
         width: 100%;
+    }
+}
+
+/* ==========================================================================
+   ACCESSIBILITY — REDUCED MOTION
+   Honor OS-level "Reduce Motion" preference. Heavy continuous animations are
+   neutralized; one-shot reveal transitions stay so layout doesn't feel broken.
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    .dynamic-glow-orb,
+    .status-dot.pulsating {
+        display: none !important;
+    }
+
+    /* Tech orbit: freeze the float animations but keep the layout intact. */
+    .tech-hub,
+    .swarm-item {
+        animation: none !important;
+    }
+}
+
+/* ==========================================================================
+   MOBILE TOUCH TARGETS — WCAG 2.5.5 / Apple HIG (44x44 minimum)
+   Pointer-coarse covers phones/tablets without affecting mouse users.
+   ========================================================================== */
+@media (pointer: coarse) {
+    .btn,
+    .btn-sm,
+    .nav-link,
+    .mobile-nav-link,
+    .footer-link,
+    .social-link,
+    .slider-control,
+    .filter-btn {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    .form-input,
+    textarea.form-input {
+        min-height: 44px;
+    }
+
+    /* Tech orbit nodes are intentionally smaller than 44px to keep the
+       orbital metaphor dense, but bumped slightly on coarse pointers. */
+    .swarm-item {
+        width: 44px;
+        height: 44px;
     }
 }

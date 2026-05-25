@@ -61,6 +61,7 @@ function initMobileMenu() {
 function initMouseGlow() {
     const orb = document.getElementById('glow-orb');
     if (!orb) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
     let targetX = 0;
     let targetY = 0;
@@ -567,36 +568,81 @@ function initContactForm() {
 
     if (!form) return;
 
-    form.addEventListener('submit', (e) => {
+    const RECIPIENT_EMAIL = 'bharathac5775@gmail.com';
+
+    const buildMailtoFallback = (name, email, message) =>
+        `<a href="mailto:${RECIPIENT_EMAIL}?subject=Portfolio Contact from ${encodeURIComponent(name)}&body=${encodeURIComponent(message)}%0D%0A%0D%0AReply to: ${encodeURIComponent(email)}" class="btn btn-secondary btn-sm" style="margin-top:10px; display:inline-flex;"><span>Open Direct Webmail Link</span></a>`;
+
+    // Netlify Forms only intercept submissions on a deployed Netlify site.
+    // Locally (file:// or localhost), there is no backend — fall back to mailto
+    // so the form is never silently broken during dev.
+    const isNetlifyHosted = !/^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])$/.test(window.location.hostname)
+        && window.location.protocol !== 'file:';
+
+    form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
         const name = document.getElementById('form-name').value;
         const email = document.getElementById('form-email').value;
         const message = document.getElementById('form-message').value;
 
-        // Visual progress feedback in the button
         submitBtn.disabled = true;
         btnSpan.textContent = 'Transmitting...';
         statusText.className = 'form-status';
         statusText.innerHTML = '<span class="t-accent">[SEND]</span> Uploading payload variables to smtp.gateway...';
 
-        // Simulate secure API round-trip delay
-        setTimeout(() => {
+        const restoreButton = () => {
             btnSpan.textContent = 'Execute Transmission';
             submitBtn.disabled = false;
+        };
+
+        const showSuccess = () => {
             statusText.className = 'form-status success';
-            
             statusText.innerHTML = `
                 <span class="t-healed">[OK] Status 202: Message Accepted.</span><br>
                 <span>Thank you, ${name}! Your transmission has been queued.</span><br>
-                <a href="mailto:bharathac5775@gmail.com?subject=Portfolio Contact from ${encodeURIComponent(name)}&body=${encodeURIComponent(message)}%0D%0A%0D%0AReply to: ${encodeURIComponent(email)}" class="btn btn-secondary btn-sm" style="margin-top:10px; display:inline-flex;">
-                   <span>Open Direct Webmail Link</span>
-                </a>
+                ${buildMailtoFallback(name, email, message)}
             `;
-            
-            // Clear fields
             form.reset();
-        }, 1800);
+        };
+
+        const showFailure = (reason) => {
+            statusText.className = 'form-status error';
+            statusText.innerHTML = `
+                <span class="t-error">[ERR] Transmission failed:</span> ${reason}<br>
+                <span>Use the direct webmail fallback below.</span><br>
+                ${buildMailtoFallback(name, email, message)}
+            `;
+        };
+
+        if (!isNetlifyHosted) {
+            // Local dev — Netlify Forms isn't available. Show a dev-mode notice
+            // routing the user to mailto.
+            setTimeout(() => {
+                restoreButton();
+                showFailure('local dev mode (deploy to Netlify for live form)');
+            }, 1200);
+            return;
+        }
+
+        // Production: POST form-encoded body to "/" — Netlify intercepts.
+        try {
+            const payload = new URLSearchParams(new FormData(form)).toString();
+            const response = await fetch('/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: payload,
+            });
+            restoreButton();
+            if (response.ok) {
+                showSuccess();
+            } else {
+                showFailure(`status ${response.status}`);
+            }
+        } catch (err) {
+            restoreButton();
+            showFailure('network unreachable');
+        }
     });
 }
 
@@ -637,17 +683,25 @@ function initScrollSpy() {
     });
 }
 
+
+// ==========================================================================
+// TECH ECOSYSTEM — ANTI-GRAVITY ORBIT
+// Four quadrant hubs (DevOps / Cloud / AI / Data); logos float around each
+// hub on randomized swarm-float animations. Hub label sits in the center.
+// Improvements over the original: jittered grid scatter (no overlap),
+// keyboard focus support, prefers-reduced-motion guard, mobile-aware sizing.
+// ==========================================================================
 function initAntiGravity() {
     const canvas = document.getElementById('orbit-canvas');
     if (!canvas) return;
 
-    // Remove any existing content
     canvas.innerHTML = '';
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const techCategories = {
         devops: {
             title: 'DevOps & CI/CD',
-            pos: { top: '10%', left: '10%' },
+            pos: { top: '6%', left: '6%' },
             items: [
                 { name: 'Jenkins', file: 'jenkins' },
                 { name: 'Docker', file: 'docker' },
@@ -664,7 +718,7 @@ function initAntiGravity() {
         },
         cloud: {
             title: 'Cloud & Infra',
-            pos: { top: '10%', right: '10%' },
+            pos: { top: '6%', right: '6%' },
             items: [
                 { name: 'AWS', file: 'aws' },
                 { name: 'Azure', file: 'azure' },
@@ -686,7 +740,7 @@ function initAntiGravity() {
         },
         aiml: {
             title: 'AI & Agents',
-            pos: { bottom: '10%', left: '10%' },
+            pos: { bottom: '6%', left: '6%' },
             items: [
                 { name: 'Python', file: 'python' },
                 { name: 'LangChain', file: 'langchain' },
@@ -697,12 +751,13 @@ function initAntiGravity() {
                 { name: 'Ollama', file: 'ollama' },
                 { name: 'CrewAI', file: 'crewai' },
                 { name: 'Claude', file: 'claude', ext: '.png' },
-                { name: 'Hermes Agent', file: 'hermes-agent', ext: '.png' }
+                { name: 'Hermes Agent', file: 'hermes-agent', ext: '.png' },
+                { name: 'OpenClaw', file: 'openclaw', ext: '.png' }
             ]
         },
         programming: {
             title: 'Code & Data',
-            pos: { bottom: '10%', right: '10%' },
+            pos: { bottom: '6%', right: '6%' },
             items: [
                 { name: 'Java', file: 'java' },
                 { name: 'Shell', file: 'shell' },
@@ -718,70 +773,107 @@ function initAntiGravity() {
         }
     };
 
+    // Jittered-grid scatter: prevents the random overlap that plagued the original.
+    // Cells overlapping the central 35-65% box are skipped (hub-core lives there).
+    const scatterPositions = (count) => {
+        // Bias to more columns so we always have enough cells after the central
+        // dead-zone is removed. count*2 gives a safe upper bound.
+        const cols = Math.max(4, Math.ceil(Math.sqrt(count * 2)));
+        const rows = Math.max(4, Math.ceil((count * 2) / cols));
+        const cellW = 100 / cols;
+        const cellH = 100 / rows;
+        const positions = [];
+
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const cx = (c + 0.5) * cellW;
+                const cy = (r + 0.5) * cellH;
+                if (cx > 35 && cx < 65 && cy > 35 && cy < 65) continue;
+                positions.push({ cx, cy, cellW, cellH });
+            }
+        }
+
+        for (let i = positions.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [positions[i], positions[j]] = [positions[j], positions[i]];
+        }
+
+        return positions.slice(0, count).map(({ cx, cy, cellW, cellH }) => ({
+            left: cx + (Math.random() - 0.5) * cellW * 0.45,
+            top:  cy + (Math.random() - 0.5) * cellH * 0.45,
+        }));
+    };
+
     Object.entries(techCategories).forEach(([key, category]) => {
-        // Create the Hub container
         const hub = document.createElement('div');
         hub.className = 'tech-hub';
-        
-        // Position the hub in its quadrant
+
         if (category.pos.top) hub.style.top = category.pos.top;
         if (category.pos.bottom) hub.style.bottom = category.pos.bottom;
         if (category.pos.left) hub.style.left = category.pos.left;
         if (category.pos.right) hub.style.right = category.pos.right;
-        
-        // Subtle animation delay so they drift out of sync
-        hub.style.animationDelay = `${(Math.random() * -10).toFixed(2)}s`;
 
-        // Create the central Core label for this Hub
+        if (!reduceMotion) {
+            hub.style.animationDelay = `${(Math.random() * -10).toFixed(2)}s`;
+        }
+
         const core = document.createElement('div');
         core.className = 'hub-core';
         core.textContent = category.title;
         hub.appendChild(core);
 
-        // Add the tech logos into this hub
-        category.items.forEach((tech) => {
-            const wrapper = document.createElement('div');
+        const positions = scatterPositions(category.items.length);
+
+        category.items.forEach((tech, i) => {
+            const wrapper = document.createElement('button');
+            wrapper.type = 'button';
             wrapper.className = 'swarm-item';
-            wrapper.title = tech.name;
-            
-            // Randomly scatter within the hub (0% to 100% of the hub's width/height)
-            // But avoid the very center (35% to 65%) where the core label is
-            let leftPerc, topPerc;
-            do {
-                leftPerc = Math.random() * 100;
-                topPerc = Math.random() * 100;
-            } while (leftPerc > 35 && leftPerc < 65 && topPerc > 35 && topPerc < 65);
+            wrapper.setAttribute('aria-label', tech.name);
+            wrapper.setAttribute('data-tooltip', tech.name);
 
-            wrapper.style.left = `calc(${leftPerc}% - 25px)`;
-            wrapper.style.top = `calc(${topPerc}% - 25px)`;
+            const { left, top } = positions[i];
+            wrapper.style.left = `calc(${left}% - 25px)`;
+            wrapper.style.top  = `calc(${top}% - 25px)`;
 
-            // Randomize floating animation
-            const duration = 8 + Math.random() * 10; // 8s to 18s
-            const delay = Math.random() * -20;
-            const isReverse = Math.random() > 0.5;
-            
-            wrapper.style.animationDuration = `${duration}s`;
-            wrapper.style.animationDelay = `${delay}s`;
-            if (isReverse) {
-                wrapper.style.animationName = 'swarmFloatReverse';
+            if (!reduceMotion) {
+                const duration = 9 + Math.random() * 9;
+                const delay = Math.random() * -20;
+                wrapper.style.animationDuration = `${duration}s`;
+                wrapper.style.animationDelay = `${delay}s`;
+                if (Math.random() > 0.5) {
+                    wrapper.style.animationName = 'swarmFloatReverse';
+                }
             }
 
             const img = document.createElement('img');
             img.src = `assets/tech-logos/${tech.file}${tech.ext || '.svg'}`;
-            img.alt = tech.name;
-            
-            // Subtle depth scaling
-            const randomScale = 0.8 + (Math.random() * 0.4);
+            img.alt = '';
+            img.loading = 'lazy';
+
+            const randomScale = 0.85 + (Math.random() * 0.3);
             img.style.transform = `scale(${randomScale})`;
 
-            img.onerror = function() {
-                wrapper.style.display = 'none'; // Fallback to hidden if bad image
-            };
+            img.onerror = () => { wrapper.style.display = 'none'; };
 
             wrapper.appendChild(img);
+
+            wrapper.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.querySelectorAll('.swarm-item.is-tapped').forEach(el => {
+                    if (el !== wrapper) el.classList.remove('is-tapped');
+                });
+                wrapper.classList.toggle('is-tapped');
+            });
+
             hub.appendChild(wrapper);
         });
 
         canvas.appendChild(hub);
+    });
+
+    canvas.addEventListener('click', (e) => {
+        if (!e.target.closest('.swarm-item')) {
+            document.querySelectorAll('.swarm-item.is-tapped').forEach(el => el.classList.remove('is-tapped'));
+        }
     });
 }
