@@ -1526,6 +1526,19 @@ a {
 .cert-slider-track .cert-card {
     flex: 0 0 calc(33.333% - 16px);
     min-width: 290px;
+    transition: var(--transition-normal);
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-card);
+    border-radius: var(--border-radius);
+    padding: 24px;
+    position: relative;
+    cursor: pointer;
+}
+
+.cert-slider-track .cert-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--color-border-active);
+    box-shadow: 0 10px 30px rgba(20, 184, 166, 0.05);
 }
 
 .slider-control {
