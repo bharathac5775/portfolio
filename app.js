@@ -613,8 +613,15 @@ function initContactForm() {
 
         const formData = new FormData(form);
         const searchParams = new URLSearchParams();
+        
+        // Explicitly append the form-name so Netlify knows which form is submitting
+        searchParams.append('form-name', 'contact');
+        
         for (const pair of formData) {
-            searchParams.append(pair[0], pair[1]);
+            // Prevent duplicate form-name if FormData already picked it up from the hidden input
+            if (pair[0] !== 'form-name') {
+                searchParams.append(pair[0], pair[1]);
+            }
         }
 
         fetch('/', {
