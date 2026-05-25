@@ -607,7 +607,16 @@ function initContactForm() {
     // Netlify's HTML scanner picking up the form at build time, which has been
     // unreliable. A native POST is intercepted by Netlify's edge regardless.
     // Show a "transmitting" state while the browser navigates to the success page.
+
+    // If we just returned from a successful submit, show the success message.
+    if (sessionStorage.getItem('contact-form-submitted') === 'true') {
+        sessionStorage.removeItem('contact-form-submitted');
+        statusText.className = 'form-status success';
+        statusText.innerHTML = '<span class="t-accent">[OK]</span> Status 202 — message accepted. I\'ll reply from ' + RECIPIENT_EMAIL + ' shortly.';
+    }
+
     form.addEventListener('submit', () => {
+        sessionStorage.setItem('contact-form-submitted', 'true');
         submitBtn.disabled = true;
         btnSpan.textContent = 'Transmitting...';
         statusText.className = 'form-status';
