@@ -576,96 +576,43 @@ function initContactForm() {
     const isLocalDev = /^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])$/.test(window.location.hostname)
         || window.location.protocol === 'file:';
 
-    // Build the URL-encoded body in the exact shape Netlify expects:
-    //   form-name=contact&name=...&email=...&message=...&bot-field=
-    const buildNetlifyBody = () => {
-        const data = new FormData(form);
-        // Force form-name to come first; some Netlify deploys are picky if it's missing.
-        const params = new URLSearchParams();
-        params.append('form-name', form.getAttribute('name') || 'contact');
-        for (const [key, value] of data.entries()) {
-            if (key !== 'form-name') params.append(key, value);
-        }
-        return params.toString();
-    };
+    // On localhost there's no Netlify backend — keep the simulated "dev mode"
+    // notice with a mailto fallback so dev isn't silently broken.
+    if (isLocalDev) {
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('form-name').value;
+            const email = document.getElementById('form-email').value;
+            const message = document.getElementById('form-message').value;
+            submitBtn.disabled = true;
+            btnSpan.textContent = 'Transmitting...';
+            statusText.className = 'form-status';
+            statusText.innerHTML = '<span class="t-accent">[SEND]</span> Uploading payload variables to smtp.gateway...';
+            setTimeout(() => {
+                btnSpan.textContent = 'Execute Transmission';
+                submitBtn.disabled = false;
+                statusText.className = 'form-status error';
+                statusText.innerHTML = `
+                    <span class="t-error">[ERR] Transmission failed:</span> local dev mode (deploy to Netlify for live form)<br>
+                    <span>Use the direct webmail fallback below.</span><br>
+                    ${buildMailtoFallback(name, email, message)}
+                `;
+            }, 1200);
+        });
+        return;
+    }
 
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-
-        const name = document.getElementById('form-name').value;
-        const email = document.getElementById('form-email').value;
-        const message = document.getElementById('form-message').value;
-
+    // Production (Netlify): let the browser do a native form submission.
+    // This is the most reliable path — fetch-based AJAX submissions depend on
+    // Netlify's HTML scanner picking up the form at build time, which has been
+    // unreliable. A native POST is intercepted by Netlify's edge regardless.
+    // Show a "transmitting" state while the browser navigates to the success page.
+    form.addEventListener('submit', () => {
         submitBtn.disabled = true;
         btnSpan.textContent = 'Transmitting...';
         statusText.className = 'form-status';
         statusText.innerHTML = '<span class="t-accent">[SEND]</span> Uploading payload variables to smtp.gateway...';
-
-        const restoreButton = () => {
-            btnSpan.textContent = 'Execute Transmission';
-            submitBtn.disabled = false;
-        };
-
-        const showSuccess = () => {
-            statusText.className = 'form-status success';
-            statusText.innerHTML = `
-                <span class="t-healed">[OK] Status 202: Message Accepted.</span><br>
-                <span>Thank you, ${name}! Your transmission has been queued.</span><br>
-                ${buildMailtoFallback(name, email, message)}
-            `;
-            form.reset();
-        };
-
-        const showFailure = (reason) => {
-            statusText.className = 'form-status error';
-            statusText.innerHTML = `
-                <span class="t-error">[ERR] Transmission failed:</span> ${reason}<br>
-                <span>Use the direct webmail fallback below.</span><br>
-                ${buildMailtoFallback(name, email, message)}
-            `;
-        };
-
-        if (isLocalDev) {
-            setTimeout(() => {
-                restoreButton();
-                showFailure('local dev mode (deploy to Netlify for live form)');
-            }, 1200);
-            return;
-        }
-
-        const body = buildNetlifyBody();
-
-        // Try POSTing to the current page path (works whether served at "/", "/index.html", or a sub-path).
-        // If that 404s, retry the canonical "/" — covers either Netlify configuration.
-        const tryPost = async (url) => {
-            return fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body,
-            });
-        };
-
-        try {
-            let response = await tryPost(window.location.pathname || '/');
-            if (response.status === 404) {
-                response = await tryPost('/');
-            }
-            if (response.ok) {
-                restoreButton();
-                showSuccess();
-                return;
-            }
-
-            // Final fallback: native form submission. The browser navigates to
-            // Netlify's success page and the message is delivered. Less elegant,
-            // but it works even when fetch-based detection fails.
-            statusText.innerHTML = '<span class="t-accent">[SEND]</span> Falling back to native submission...';
-            form.dataset.bypassJs = 'true';
-            HTMLFormElement.prototype.submit.call(form);
-        } catch (err) {
-            restoreButton();
-            showFailure('network unreachable');
-        }
+        // Do not call e.preventDefault() — we want the native submit to proceed.
     });
 }
 
