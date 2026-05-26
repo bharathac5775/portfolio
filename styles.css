@@ -2203,22 +2203,37 @@ textarea.form-input {
 }
 
 @media (max-width: 768px) {
-    .platform-section .section-subtitle {
-        font-size: 0.72rem;
+    .platform-section .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    .platform-section .section-header .section-divider {
+        width: 100%;
+        height: 1px;
+        flex: none;
     }
     .platform-section .section-title {
         font-size: 1.5rem;
+        white-space: normal;
         word-break: break-word;
+        max-width: 100%;
+    }
+    .platform-section .section-subtitle {
+        font-size: 0.72rem;
+        padding: 0;
+        max-width: 100%;
+        overflow-wrap: break-word;
+        word-break: normal;
     }
 }
 
 @media (max-width: 480px) {
-    .platform-section .section-subtitle {
-        font-size: 0.62rem;
-        padding: 0 8px;
-    }
     .platform-section .section-title {
         font-size: 1.25rem;
+    }
+    .platform-section .section-subtitle {
+        font-size: 0.65rem;
     }
 }
 
