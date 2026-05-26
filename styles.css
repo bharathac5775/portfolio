@@ -2196,6 +2196,30 @@ textarea.form-input {
     color: var(--color-text-muted);
     font-family: var(--font-mono);
     font-size: 0.85rem;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    line-height: 1.5;
+    padding: 0 12px;
+}
+
+@media (max-width: 768px) {
+    .platform-section .section-subtitle {
+        font-size: 0.72rem;
+    }
+    .platform-section .section-title {
+        font-size: 1.5rem;
+        word-break: break-word;
+    }
+}
+
+@media (max-width: 480px) {
+    .platform-section .section-subtitle {
+        font-size: 0.62rem;
+        padding: 0 8px;
+    }
+    .platform-section .section-title {
+        font-size: 1.25rem;
+    }
 }
 
 .platform-stage {
