@@ -558,11 +558,65 @@ function initCertificationsSlider() {
         requestAnimationFrame(tick);
     };
 
-    // Pause/resume on hover (desktop) and touch (mobile)
+    // Pause/resume on hover (desktop)
     container.addEventListener('mouseenter', () => { paused = true; });
-    container.addEventListener('mouseleave', () => { paused = false; lastTs = 0; });
-    container.addEventListener('touchstart', () => { paused = true; }, { passive: true });
-    container.addEventListener('touchend',   () => { paused = false; lastTs = 0; }, { passive: true });
+    container.addEventListener('mouseleave', () => {
+        if (!dragging) { paused = false; lastTs = 0; }
+    });
+
+    // Pointer-drag (works for both touch and mouse). The track follows the
+    // finger 1:1, then resumes auto-scrolling from wherever it was released.
+    let dragging = false;
+    let dragStartX = 0;
+    let dragStartOffset = 0;
+    let dragMoved = false;
+
+    const onPointerDown = (e) => {
+        dragging = true;
+        dragMoved = false;
+        paused = true;
+        track.style.transition = '';
+        dragStartX = e.touches ? e.touches[0].clientX : e.clientX;
+        dragStartOffset = offset;
+        track.classList.add('is-dragging');
+    };
+
+    const onPointerMove = (e) => {
+        if (!dragging) return;
+        const x = e.touches ? e.touches[0].clientX : e.clientX;
+        const dx = x - dragStartX;
+        if (Math.abs(dx) > 4) dragMoved = true;
+        offset = dragStartOffset + dx;
+        if (originalWidth > 0) {
+            while (offset <= -originalWidth) offset += originalWidth;
+            while (offset > 0) offset -= originalWidth;
+        }
+        apply();
+    };
+
+    const onPointerUp = () => {
+        if (!dragging) return;
+        dragging = false;
+        track.classList.remove('is-dragging');
+        // If the user actually dragged, suppress the click that would otherwise
+        // open the cert modal on touch-end.
+        if (dragMoved) {
+            const block = (ev) => { ev.stopPropagation(); ev.preventDefault(); };
+            track.addEventListener('click', block, { capture: true, once: true });
+        }
+        // Resume auto-scroll unless still hovered (desktop). On mobile we
+        // resume immediately since there's no hover state.
+        const stillHovered = container.matches(':hover');
+        if (!stillHovered) { paused = false; lastTs = 0; }
+    };
+
+    track.addEventListener('mousedown', onPointerDown);
+    window.addEventListener('mousemove', onPointerMove);
+    window.addEventListener('mouseup', onPointerUp);
+    track.addEventListener('touchstart', onPointerDown, { passive: true });
+    track.addEventListener('touchmove', onPointerMove, { passive: true });
+    track.addEventListener('touchend', onPointerUp);
+    track.addEventListener('touchcancel', onPointerUp);
 
     // Manual step buttons
     const stepWidth = () => {

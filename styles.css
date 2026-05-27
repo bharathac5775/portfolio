@@ -1523,6 +1523,13 @@ a {
     width: max-content;
     will-change: transform;
     transform: translate3d(0, 0, 0);
+    touch-action: pan-y;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.cert-slider-track.is-dragging {
+    cursor: grabbing;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2120,11 +2127,12 @@ textarea.form-input {
     }
     
     .cert-slider-container {
-        padding: 0 10px;
+        padding: 0 40px;
     }
-    
+
     .slider-control {
-        display: none; /* Native touch swiping is preferred on mobile viewports */
+        width: 36px;
+        height: 36px;
     }
     
     .hero-cta-group {
