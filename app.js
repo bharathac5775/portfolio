@@ -438,19 +438,25 @@ function initCertificationsModal() {
                 "Integrating pre-trained AI cognitive services (Lex, Rekognition, Comprehend) into enterprise applications."
             ]
         },
-        "DevOps & Kubernetes Credentials": {
-            title: "KodeKloud DevOps & GitOps Credentials",
+        "DevOps and Cloud Certificate": {
+            title: "KodeKloud DevOps and Cloud Certificate",
             issuer: "KodeKloud",
-            desc: "Practical hands-on lab achievements validating core configuration, administration, scripting, and pipeline skills.",
+            desc: "Bundle of KodeKloud course completions covering the core DevOps and cloud-native toolchain — configuration management, containers, CI/CD, source control, infrastructure-as-code, and Linux foundations.",
             bullets: [
-                "Kubernetes Cluster Setup, Pod creation, Service bindings, and ConfigMaps/Secrets management.",
-                "Writing Dockerfiles and optimizing image dimensions for containerized services.",
-                "Developing Ansible playbooks to automate multi-node system installations and configuration management.",
-                "Writing Jenkinsfile pipelines containing build, test, and release GitOps stages.",
-                "Linux system maintenance, shell scripting, cron setups, and network validations."
-            ]
+                "Ansible — playbook authoring, inventories, roles, and multi-node configuration management.",
+                "AWS 100 Days Challenge — daily hands-on labs spanning compute, storage, networking, IAM, and serverless.",
+                "Docker — image building, Dockerfile optimization, multi-stage builds, and container runtime fundamentals.",
+                "Git — branching workflows, rebases, conflict resolution, and team collaboration patterns.",
+                "Jenkins — declarative pipelines, build/test/deploy stages, and GitOps integration.",
+                "Kubernetes — cluster setup, Pods, Services, ConfigMaps, Secrets, and Deployments.",
+                "Linux — system administration, shell scripting, cron jobs, and networking diagnostics.",
+                "Terraform — provider configuration, state management, modules, and IaC for AWS resources."
+            ],
+            link: "https://drive.google.com/drive/folders/1CljZFmNypH4roDqPuLuryDTzVpWEpi7v?usp=sharing"
         }
     };
+
+    const DEFAULT_VERIFY_LINK = "https://drive.google.com/drive/folders/1w7olNVTp16XGdCM8M6207m_hozTK3fGh?usp=sharing";
 
     const openModal = (certKey) => {
         const data = certData[certKey] || {
@@ -461,6 +467,7 @@ function initCertificationsModal() {
         };
 
         let bulletsHtml = data.bullets.map(b => `<li>${b}</li>`).join('');
+        const verifyLink = data.link || DEFAULT_VERIFY_LINK;
 
         bodyContent.innerHTML = `
             <h3 class="modal-title">${data.title}</h3>
@@ -470,7 +477,7 @@ function initCertificationsModal() {
             <ul class="modal-bullets">
                 ${bulletsHtml}
             </ul>
-            <a href="https://drive.google.com/drive/folders/1w7olNVTp16XGdCM8M6207m_hozTK3fGh?usp=sharing" target="_blank" rel="noopener noreferrer" class="btn btn-primary modal-action-btn">
+            <a href="${verifyLink}" target="_blank" rel="noopener noreferrer" class="btn btn-primary modal-action-btn">
                 <span>View Drive Verification Directory</span>
                 <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
             </a>
