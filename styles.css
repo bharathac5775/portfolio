@@ -929,7 +929,7 @@ a {
 .stat-value {
     position: relative;
     font-family: var(--font-mono);
-    font-size: 0.92rem;
+    font-size: 1.3rem;
     font-weight: 700;
     color: var(--color-accent-teal);
     margin-bottom: 12px;
@@ -945,7 +945,7 @@ a {
 .stat-label {
     position: relative;
     font-family: var(--font-sans);
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     color: var(--color-text-primary);
     line-height: 1.6;
     margin-top: auto; /* Pushes the label down nicely */
@@ -1685,7 +1685,6 @@ a {
    ========================================================================== */
 .education-section {
     padding: 100px 0;
-    border-top: 1px solid var(--color-border);
 }
 
 .education-grid {
