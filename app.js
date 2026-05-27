@@ -390,7 +390,8 @@ function initCertificationsModal() {
                 "Managed database implementations (Amazon RDS, DynamoDB, ElastiCache).",
                 "Infrastructure automation blueprints using AWS CloudFormation.",
                 "Serverless workflows mapping API Gateway, Lambda, and SQS queues."
-            ]
+            ],
+            link: "https://drive.google.com/file/d/13h_qgQhTiwTfQY-ZyjP28oP_X6N3YXQ6/view?usp=sharing"
         },
         "AWS Academy Cloud Security & Builder": {
             title: "AWS Academy Cloud Security and Builder Course",
@@ -402,7 +403,8 @@ function initCertificationsModal() {
                 "Data protection policies covering AWS KMS key management and S3 server-side encryption.",
                 "Setting up perimeter security utilizing Web Application Firewalls (WAF) and Shield protection.",
                 "Infrastructure validation scanning with AWS Inspector and Amazon GuardDuty."
-            ]
+            ],
+            link: "https://drive.google.com/file/d/1vBCTMV32c8q7W-zdFTwGnH7qUi0RcI0y/view?usp=sharing"
         },
         "AWS Academy Cloud Operations": {
             title: "AWS Academy Cloud Operations",
@@ -414,7 +416,8 @@ function initCertificationsModal() {
                 "Cloud optimization, monitoring resource runtimes, and cost budgeting models.",
                 "Backup strategies and business continuity setups (AWS Backup, AMI lifecycle management).",
                 "Cloud environment governance utilizing AWS Organizations and Service Control Policies (SCPs)."
-            ]
+            ],
+            link: "https://drive.google.com/file/d/1xNPxcy8Veo8AivgWcVVzt6gjZzmLGj2p/view?usp=sharing"
         },
         "AWS Academy Cloud Foundations": {
             title: "AWS Academy Cloud Foundations",
@@ -425,7 +428,21 @@ function initCertificationsModal() {
                 "Overview of EC2 instances, S3 storage buckets, VPC architectures, and RDS databases.",
                 "Understanding the Shared Responsibility Model and Cloud Compliance metrics.",
                 "Navigating billing structures, cost estimators, and standard support frameworks."
-            ]
+            ],
+            link: "https://drive.google.com/file/d/1e1UVTh2f5W8100GrXMK23JRFL-bdDTMp/view?usp=sharing"
+        },
+        "AWS Academy Cloud Security Foundations": {
+            title: "AWS Academy Cloud Security Foundations",
+            issuer: "AWS Academy",
+            desc: "Introduces foundational cloud security concepts on AWS — identity, data protection, threat detection, and shared-responsibility boundaries.",
+            bullets: [
+                "Core principles of the AWS Shared Responsibility Model and cloud security posture.",
+                "Identity and access fundamentals: IAM users, groups, roles, and least-privilege policies.",
+                "Data protection basics — encryption at rest and in transit, AWS KMS, and S3 bucket policies.",
+                "Network security primitives: VPC security groups, NACLs, and subnet isolation.",
+                "Introduction to threat detection, logging, and compliance monitoring on AWS."
+            ],
+            link: "https://drive.google.com/file/d/17frTO6q3RVz0FFQG5wmmSxBEKkCm8tuu/view?usp=sharing"
         },
         "DevOps and AI on AWS": {
             title: "DevOps and AI on AWS",
@@ -436,7 +453,22 @@ function initCertificationsModal() {
                 "Configuring training infrastructures and serving endpoints using Amazon SageMaker.",
                 "Monitoring model drift, prediction logs, and system load profiles.",
                 "Integrating pre-trained AI cognitive services (Lex, Rekognition, Comprehend) into enterprise applications."
-            ]
+            ],
+            link: "https://drive.google.com/file/d/16mUmwnGmWPHCqyNHV-YT6IfPTmK1mW52/view?usp=sharing"
+        },
+        "Web Development": {
+            title: "Web Development",
+            issuer: "Course Completion",
+            desc: "Full-stack web development credential covering modern front-end and back-end fundamentals — from semantic markup and styling to JavaScript-driven UIs and Node-based APIs.",
+            bullets: [
+                "HTML — semantic markup, accessibility, forms, and document structure.",
+                "CSS — responsive layouts with Flexbox/Grid, transitions, and modern design patterns.",
+                "JavaScript — ES6+ syntax, DOM manipulation, async/await, and event-driven UI logic.",
+                "Node.js — server-side JavaScript runtime, npm package management, and REST API basics.",
+                "React — component-driven UIs, hooks, state management, and SPA routing.",
+                "Express.js — routing, middleware patterns, and building REST APIs on top of Node."
+            ],
+            link: "https://drive.google.com/file/d/1Sm6g_0c9wSLA81Szv9hZo0wkLT_bnJMp/view?usp=sharing"
         },
         "DevOps and Cloud Certificate": {
             title: "KodeKloud DevOps and Cloud Certificate",
@@ -1509,27 +1541,50 @@ function initPlatformPipeline() {
     seedSparks();
     startObservabilityDrift();
 
-    // Only run when section is in viewport — saves CPU on a long page
-    let isRunning = false;
-    const startLoop = async () => {
-        if (isRunning) return;
-        isRunning = true;
-        // Run forever (or until tab hidden — see visibilitychange below)
-        while (isRunning) {
-            await runPipeline();
-        }
+    // Only run when section is in viewport — saves CPU on a long page.
+    // `loopStarted` is a one-shot guard so we never spawn parallel loops.
+    // `paused` is checked between runs so an in-flight run finishes cleanly
+    // instead of leaving stray setTimeouts mutating state behind a new run.
+    let loopStarted = false;
+    let paused = true;
+
+    const ensureLoop = () => {
+        if (loopStarted) return;
+        loopStarted = true;
+        (async () => {
+            while (true) {
+                if (paused) {
+                    await new Promise(r => setTimeout(r, 250));
+                    continue;
+                }
+                await runPipeline();
+            }
+        })();
     };
+
+    const platformEl = document.getElementById('platform');
 
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
-            if (entry.isIntersecting) startLoop();
-            else isRunning = false;
+            if (entry.isIntersecting) {
+                paused = false;
+                ensureLoop();
+            } else {
+                paused = true;
+            }
         });
     }, { threshold: 0.15 });
-    observer.observe(document.getElementById('platform'));
+    observer.observe(platformEl);
 
     document.addEventListener('visibilitychange', () => {
-        if (document.hidden) isRunning = false;
-        else if (document.getElementById('platform').getBoundingClientRect().top < window.innerHeight) startLoop();
+        if (document.hidden) {
+            paused = true;
+        } else {
+            const rect = platformEl.getBoundingClientRect();
+            if (rect.top < window.innerHeight && rect.bottom > 0) {
+                paused = false;
+                ensureLoop();
+            }
+        }
     });
 }
