@@ -1532,4 +1532,44 @@ function initPlatformPipeline() {
         if (document.hidden) isRunning = false;
         else if (document.getElementById('platform').getBoundingClientRect().top < window.innerHeight) startLoop();
     });
+
+    // Lock the section's rendered height after first paint. Even though every
+    // child has a stable size, this freezes the outer box so no internal
+    // animation, font swap, or measurement quirk can shift sections after it.
+    // Re-measured on viewport resize (orientation change, URL bar show/hide)
+    // because the section's natural height varies with width.
+    const platformSection = document.getElementById('platform');
+    const stage = platformSection ? platformSection.querySelector('.platform-stage') : null;
+    if (platformSection && stage) {
+        const lockHeight = () => {
+            // Clear any prior lock so we can measure the natural height.
+            stage.style.minHeight = '';
+            stage.style.maxHeight = '';
+            // Wait one frame so layout settles after the clear.
+            requestAnimationFrame(() => {
+                const h = stage.getBoundingClientRect().height;
+                if (h > 0) {
+                    stage.style.minHeight = `${Math.ceil(h)}px`;
+                    stage.style.maxHeight = `${Math.ceil(h)}px`;
+                }
+            });
+        };
+        // Initial lock once images / fonts settle.
+        if (document.readyState === 'complete') {
+            requestAnimationFrame(lockHeight);
+        } else {
+            window.addEventListener('load', () => requestAnimationFrame(lockHeight), { once: true });
+        }
+        // Re-lock when the viewport width changes (debounced).
+        let resizeTimer = null;
+        let lastWidth = window.innerWidth;
+        window.addEventListener('resize', () => {
+            // Only re-measure on width change — height changes from mobile URL
+            // bar show/hide should not retrigger.
+            if (window.innerWidth === lastWidth) return;
+            lastWidth = window.innerWidth;
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(lockHeight, 200);
+        });
+    }
 }
