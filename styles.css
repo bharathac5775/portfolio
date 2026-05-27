@@ -680,16 +680,31 @@ a {
     padding: 14px 16px;
     height: 140px;
     overflow-y: auto;
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
     gap: 6px;
     color: var(--color-text-secondary);
     border-bottom: 1px solid var(--color-border);
+    /* Bound the body width so injected long lines (e.g. PLAY RECAP banners
+       or unbroken `***` separators) cannot push the terminal — and the
+       whole hero — wider than the viewport on mobile, which would trigger
+       browser auto-zoom-out and shift every section below. */
+    min-width: 0;
+    max-width: 100%;
 }
 
 .terminal-line {
     line-height: 1.4;
     white-space: pre-wrap;
+    /* `pre-wrap` preserves whitespace but does NOT break unbreakable
+       character runs (e.g. `***...***`). On narrow mobile screens that run
+       overflows horizontally and forces the browser to zoom out. Force a
+       break point at any character so the line stays inside the box. */
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .t-accent { color: var(--color-accent-teal); }
@@ -2254,8 +2269,13 @@ textarea.form-input {
     position: relative;
     /* Isolate this section's layout: any internal animated growth (log lines,
        node pulses, etc.) cannot reflow content above or below. Stops the
-       page from jiggling while the pipeline animation runs. */
+       page from jiggling while the pipeline animation runs.
+       The JS in initPlatformPipeline() additionally locks the section's
+       outer height after first paint, so even content that exceeds the
+       measured height cannot push the next section down — overflow is
+       clipped here so overflow is never visible either. */
     contain: layout paint;
+    overflow: clip;
 }
 
 .platform-section .section-subtitle {
@@ -2780,6 +2800,8 @@ textarea.form-input {
     color: var(--color-text-secondary);
     flex: 1;
     min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 @keyframes logLineFade {

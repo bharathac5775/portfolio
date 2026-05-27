@@ -1533,24 +1533,28 @@ function initPlatformPipeline() {
         else if (document.getElementById('platform').getBoundingClientRect().top < window.innerHeight) startLoop();
     });
 
-    // Lock the section's rendered height after first paint. Even though every
-    // child has a stable size, this freezes the outer box so no internal
-    // animation, font swap, or measurement quirk can shift sections after it.
-    // Re-measured on viewport resize (orientation change, URL bar show/hide)
-    // because the section's natural height varies with width.
+    // Lock the SECTION'S rendered height after first paint. We freeze the
+    // entire <section> box (not just the inner .platform-stage), so the
+    // distance from the section's top to its bottom can never change once
+    // measured. Anything below it is then anchored. Internal animations,
+    // font swaps, late image decoding, log line growth — none of them can
+    // shift sections that come after this one.
+    //
+    // Re-measured only on viewport WIDTH change (orientation flip, desktop
+    // resize). Mobile URL-bar show/hide changes height but not width, so it
+    // won't retrigger the lock and won't cause flicker.
     const platformSection = document.getElementById('platform');
-    const stage = platformSection ? platformSection.querySelector('.platform-stage') : null;
-    if (platformSection && stage) {
+    if (platformSection) {
         const lockHeight = () => {
             // Clear any prior lock so we can measure the natural height.
-            stage.style.minHeight = '';
-            stage.style.maxHeight = '';
+            platformSection.style.minHeight = '';
+            platformSection.style.maxHeight = '';
             // Wait one frame so layout settles after the clear.
             requestAnimationFrame(() => {
-                const h = stage.getBoundingClientRect().height;
+                const h = platformSection.getBoundingClientRect().height;
                 if (h > 0) {
-                    stage.style.minHeight = `${Math.ceil(h)}px`;
-                    stage.style.maxHeight = `${Math.ceil(h)}px`;
+                    platformSection.style.minHeight = `${Math.ceil(h)}px`;
+                    platformSection.style.maxHeight = `${Math.ceil(h)}px`;
                 }
             });
         };
@@ -1564,8 +1568,6 @@ function initPlatformPipeline() {
         let resizeTimer = null;
         let lastWidth = window.innerWidth;
         window.addEventListener('resize', () => {
-            // Only re-measure on width change — height changes from mobile URL
-            // bar show/hide should not retrigger.
             if (window.innerWidth === lastWidth) return;
             lastWidth = window.innerWidth;
             clearTimeout(resizeTimer);
