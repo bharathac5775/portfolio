@@ -458,6 +458,9 @@ function initCertificationsModal() {
 
     const DEFAULT_VERIFY_LINK = "https://drive.google.com/drive/folders/1w7olNVTp16XGdCM8M6207m_hozTK3fGh?usp=sharing";
 
+    let modalIsOpen = false;
+    let pushedHistory = false;
+
     const openModal = (certKey) => {
         const data = certData[certKey] || {
             title: certKey,
@@ -486,13 +489,46 @@ function initCertificationsModal() {
         modal.classList.add('active');
         modal.setAttribute('aria-hidden', 'false');
         document.body.classList.add('no-scroll');
+        // Reset scroll position so new cards start from the top.
+        bodyContent.scrollTop = 0;
+        // Push a history entry so the OS / browser back button closes the
+        // modal instead of leaving the site. Only push once per modal session;
+        // re-opens while already open just swap content.
+        if (!modalIsOpen) {
+            modalIsOpen = true;
+            try {
+                history.pushState({ certModal: true }, '');
+                pushedHistory = true;
+            } catch (_) {
+                pushedHistory = false;
+            }
+        }
     };
 
-    const closeModal = () => {
+    // Closes the modal without touching history. Used by the popstate handler
+    // (history is already moving backward) and as the underlying close path.
+    const performClose = () => {
         modal.classList.remove('active');
         modal.setAttribute('aria-hidden', 'true');
         document.body.classList.remove('no-scroll');
+        modalIsOpen = false;
+        pushedHistory = false;
     };
+
+    // User-initiated close paths (X, backdrop, Escape) prefer history.back()
+    // so the pushed state is unwound — keeps history clean and consistent.
+    const closeModal = () => {
+        if (!modalIsOpen) return;
+        if (pushedHistory) {
+            history.back(); // popstate handler will run performClose()
+        } else {
+            performClose();
+        }
+    };
+
+    window.addEventListener('popstate', () => {
+        if (modalIsOpen) performClose();
+    });
 
     cards.forEach(card => {
         card.addEventListener('click', () => {
