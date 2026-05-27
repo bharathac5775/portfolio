@@ -1509,23 +1509,35 @@ a {
     padding: 0 50px;
 }
 
+.cert-slider-viewport {
+    flex: 1;
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 60px, #000 calc(100% - 60px), transparent 100%);
+            mask-image: linear-gradient(to right, transparent 0, #000 60px, #000 calc(100% - 60px), transparent 100%);
+}
+
 .cert-slider-track {
     display: flex;
     gap: 24px;
-    overflow-x: auto;
-    scroll-behavior: smooth;
     padding: 16px 4px;
-    scrollbar-width: none; /* Hide scrollbar Firefox */
-    -ms-overflow-style: none;  /* Hide scrollbar IE/Edge */
+    width: max-content;
+    will-change: transform;
+    transform: translate3d(0, 0, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cert-slider-track {
+        transform: none !important;
+    }
 }
 
 .cert-slider-track::-webkit-scrollbar {
-    display: none; /* Hide scrollbar Chrome/Safari */
+    display: none;
 }
 
 .cert-slider-track .cert-card {
-    flex: 0 0 calc(33.333% - 16px);
-    min-width: 290px;
+    flex: 0 0 300px;
+    width: 300px;
     transition: var(--transition-normal);
     border: 1px solid var(--color-border);
     background: var(--color-bg-card);
@@ -1986,7 +1998,8 @@ textarea.form-input {
         grid-column: span 2;
     }
     .cert-slider-track .cert-card {
-        flex: 0 0 calc(50% - 12px);
+        flex: 0 0 280px;
+        width: 280px;
     }
     .cert-slider-container {
         padding: 0 30px;
@@ -2049,7 +2062,8 @@ textarea.form-input {
     }
     
     .cert-slider-track .cert-card {
-        flex: 0 0 calc(100%);
+        flex: 0 0 260px;
+        width: 260px;
     }
     
     .education-grid {

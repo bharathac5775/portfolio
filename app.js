@@ -8,8 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initTypedSubtitle();
     initTerminalSimulation();
     initProjectFilter();
-    initCertificationsModal();
     initCertificationsSlider();
+    initCertificationsModal();
     initScrollReveal();
     initContactForm();
     initScrollSpy();
@@ -512,23 +512,89 @@ function initCertificationsModal() {
 // ==========================================================================
 function initCertificationsSlider() {
     const track = document.getElementById('cert-track');
+    const container = document.querySelector('.cert-slider-container');
     const prevBtn = document.getElementById('cert-prev');
     const nextBtn = document.getElementById('cert-next');
-    if (!track || !prevBtn || !nextBtn) return;
+    if (!track || !container) return;
 
-    const getScrollOffset = () => {
-        const firstCard = track.firstElementChild;
-        if (!firstCard) return 300;
-        return firstCard.getBoundingClientRect().width + 24; // Width + gap
+    // Duplicate cards once so the marquee loops seamlessly: when the offset
+    // hits the end of the original set, we wrap back to 0 and the duplicates
+    // are visually identical, so there's no visible jump.
+    const originals = Array.from(track.children);
+    originals.forEach(card => {
+        const clone = card.cloneNode(true);
+        clone.setAttribute('aria-hidden', 'true');
+        clone.dataset.clone = 'true';
+        track.appendChild(clone);
+    });
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    let offset = 0;          // current translateX in px (negative = scrolled left)
+    let originalWidth = 0;   // width of one full set of cards (originals only)
+    let paused = reduceMotion;
+    const SPEED = 30;        // px per second
+    let lastTs = 0;
+
+    const measure = () => {
+        // Half of total scrollWidth = width of one full original set,
+        // since we duplicated the children exactly once.
+        originalWidth = track.scrollWidth / 2;
     };
 
-    prevBtn.addEventListener('click', () => {
-        track.scrollBy({ left: -getScrollOffset(), behavior: 'smooth' });
-    });
+    const apply = () => {
+        track.style.transform = `translate3d(${offset}px, 0, 0)`;
+    };
 
-    nextBtn.addEventListener('click', () => {
-        track.scrollBy({ left: getScrollOffset(), behavior: 'smooth' });
-    });
+    const tick = (ts) => {
+        if (!lastTs) lastTs = ts;
+        const dt = (ts - lastTs) / 1000;
+        lastTs = ts;
+        if (!paused && originalWidth > 0) {
+            offset -= SPEED * dt;
+            if (offset <= -originalWidth) offset += originalWidth;
+            apply();
+        }
+        requestAnimationFrame(tick);
+    };
+
+    // Pause/resume on hover (desktop) and touch (mobile)
+    container.addEventListener('mouseenter', () => { paused = true; });
+    container.addEventListener('mouseleave', () => { paused = false; lastTs = 0; });
+    container.addEventListener('touchstart', () => { paused = true; }, { passive: true });
+    container.addEventListener('touchend',   () => { paused = false; lastTs = 0; }, { passive: true });
+
+    // Manual step buttons
+    const stepWidth = () => {
+        const firstCard = track.firstElementChild;
+        if (!firstCard) return 300;
+        return firstCard.getBoundingClientRect().width + 24; // card + gap
+    };
+
+    const step = (direction) => {
+        offset += direction * stepWidth();
+        // Keep offset in the canonical range [-originalWidth, 0] so the loop
+        // wrap stays seamless after manual nudges.
+        if (originalWidth > 0) {
+            while (offset <= -originalWidth) offset += originalWidth;
+            while (offset > 0) offset -= originalWidth;
+        }
+        track.style.transition = 'transform 0.45s ease';
+        apply();
+        // Drop the transition after it finishes so the rAF loop resumes
+        // pixel-by-pixel without easing artifacts.
+        setTimeout(() => { track.style.transition = ''; }, 480);
+    };
+
+    if (prevBtn) prevBtn.addEventListener('click', () => step(+1)); // prev = move right
+    if (nextBtn) nextBtn.addEventListener('click', () => step(-1)); // next = move left
+
+    // Re-measure when images/fonts settle or the viewport resizes.
+    measure();
+    window.addEventListener('resize', measure);
+    window.addEventListener('load', measure);
+
+    if (!reduceMotion) requestAnimationFrame(tick);
 }
 
 // ==========================================================================
