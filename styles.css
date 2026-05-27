@@ -1352,11 +1352,12 @@ a {
 .orbit-canvas {
     position: relative;
     overflow: hidden;
-    height: 800px;
+    height: 720px;
+    max-width: 1200px;
+    margin: 20px auto 0;
     background: radial-gradient(circle at center, rgba(15, 23, 42, 0.8) 0%, rgba(3, 7, 18, 0.4) 100%);
     border: 1px solid var(--color-border);
     border-radius: 20px;
-    margin-top: 20px;
 }
 
 .tech-hub {
@@ -1388,8 +1389,8 @@ a {
 
 .swarm-item {
     position: absolute;
-    width: 50px;
-    height: 50px;
+    width: 48px;
+    height: 48px;
     padding: 0;
     margin: 0;
     font: inherit;
@@ -1485,8 +1486,8 @@ a {
 
 /* Tablet — shrink stage and hubs proportionally */
 @media (max-width: 1024px) {
-    .orbit-canvas { height: 700px; }
-    .swarm-item { width: 46px; height: 46px; }
+    .orbit-canvas { height: 640px; }
+    .swarm-item { width: 44px; height: 44px; }
 }
 
 /* Mobile — keep orbital metaphor but tighten hub footprint and node size */
@@ -2269,13 +2270,8 @@ textarea.form-input {
     position: relative;
     /* Isolate this section's layout: any internal animated growth (log lines,
        node pulses, etc.) cannot reflow content above or below. Stops the
-       page from jiggling while the pipeline animation runs.
-       The JS in initPlatformPipeline() additionally locks the section's
-       outer height after first paint, so even content that exceeds the
-       measured height cannot push the next section down — overflow is
-       clipped here so overflow is never visible either. */
+       page from jiggling while the pipeline animation runs. */
     contain: layout paint;
-    overflow: clip;
 }
 
 .platform-section .section-subtitle {

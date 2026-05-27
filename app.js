@@ -1532,46 +1532,4 @@ function initPlatformPipeline() {
         if (document.hidden) isRunning = false;
         else if (document.getElementById('platform').getBoundingClientRect().top < window.innerHeight) startLoop();
     });
-
-    // Lock the SECTION'S rendered height after first paint. We freeze the
-    // entire <section> box (not just the inner .platform-stage), so the
-    // distance from the section's top to its bottom can never change once
-    // measured. Anything below it is then anchored. Internal animations,
-    // font swaps, late image decoding, log line growth — none of them can
-    // shift sections that come after this one.
-    //
-    // Re-measured only on viewport WIDTH change (orientation flip, desktop
-    // resize). Mobile URL-bar show/hide changes height but not width, so it
-    // won't retrigger the lock and won't cause flicker.
-    const platformSection = document.getElementById('platform');
-    if (platformSection) {
-        const lockHeight = () => {
-            // Clear any prior lock so we can measure the natural height.
-            platformSection.style.minHeight = '';
-            platformSection.style.maxHeight = '';
-            // Wait one frame so layout settles after the clear.
-            requestAnimationFrame(() => {
-                const h = platformSection.getBoundingClientRect().height;
-                if (h > 0) {
-                    platformSection.style.minHeight = `${Math.ceil(h)}px`;
-                    platformSection.style.maxHeight = `${Math.ceil(h)}px`;
-                }
-            });
-        };
-        // Initial lock once images / fonts settle.
-        if (document.readyState === 'complete') {
-            requestAnimationFrame(lockHeight);
-        } else {
-            window.addEventListener('load', () => requestAnimationFrame(lockHeight), { once: true });
-        }
-        // Re-lock when the viewport width changes (debounced).
-        let resizeTimer = null;
-        let lastWidth = window.innerWidth;
-        window.addEventListener('resize', () => {
-            if (window.innerWidth === lastWidth) return;
-            lastWidth = window.innerWidth;
-            clearTimeout(resizeTimer);
-            resizeTimer = setTimeout(lockHeight, 200);
-        });
-    }
 }
