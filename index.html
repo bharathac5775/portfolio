@@ -424,7 +424,7 @@
                             </div>
 
                             <!-- IaC + Config sub-cluster: feeds Kubernetes from GitHub (provisioning + node config) -->
-                            <div class="flow-cluster cluster-cfg" style="left:7%; top:44%; width:22%; height:32%;">
+                            <div class="flow-cluster cluster-cfg" style="left:7%; top:44%; width:28%; height:32%;">
                                 <span class="cluster-label">IaC + Config</span>
                                 <div class="flow-node node-tf" data-node="tf" style="left:24%; top:50%;">
                                     <div class="node-icon"><img src="assets/tech-logos/terraform.svg" alt="" loading="lazy"></div>
@@ -441,6 +441,9 @@
                                 <div class="node-label">Registry<span class="node-sub">dockerhub</span></div>
                             </div>
 
+                            <!-- Kubernetes Cluster frame — wraps ArgoCD, Kubernetes control-plane, and Observability sub-cluster -->
+                            <div class="flow-cluster cluster-k8s" style="left:38%; top:71%; width:60%; height:29%;"></div>
+
                             <div class="flow-node node-cd" data-node="cd" style="left:42%; top:75%;">
                                 <div class="node-icon"><img src="assets/tech-logos/argocd.svg" alt="" loading="lazy"></div>
                                 <div class="node-label">ArgoCD<span class="node-sub">GitOps CD</span></div>
@@ -448,10 +451,10 @@
 
                             <div class="flow-node node-k8s" data-node="k8s" style="left:42%; top:91%;">
                                 <div class="node-icon"><img src="assets/tech-logos/kubernetes.svg" alt="" loading="lazy"></div>
-                                <div class="node-label">Kubernetes<span class="node-sub">prod-eks</span></div>
+                                <div class="node-label">Kubernetes Cluster</div>
                             </div>
 
-                            <!-- Observability cluster (right-bottom) -->
+                            <!-- Observability sub-cluster (nested inside Kubernetes Cluster frame) -->
                             <div class="flow-cluster cluster-obs" style="left:68%; top:70%; width:30%; height:28%;">
                                 <span class="cluster-label">Observability</span>
                                 <div class="flow-node node-obs-metrics" data-node="obs-metrics" style="left:22%; top:50%;">

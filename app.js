@@ -1150,10 +1150,10 @@ function initPlatformPipeline() {
         test:       { nodes: ['ci-build'],            edges: [],                                        cluster: 'cluster-ci' },
         scan:       { nodes: ['ci-scan'],             edges: ['edge-ci-build-scan'],                    cluster: 'cluster-ci' },
         'iac-plan': { nodes: ['scm', 'tf'],           edges: ['edge-scm-iac'],                          cluster: 'cluster-cfg' },
-        'iac-apply':{ nodes: ['tf', 'ans', 'k8s'],    edges: ['edge-iac-k8s'],                          cluster: 'cluster-cfg' },
+        'iac-apply':{ nodes: ['tf', 'ans', 'k8s'],    edges: ['edge-iac-k8s'],                          cluster: ['cluster-cfg', 'cluster-k8s'] },
         config:     { nodes: ['ans', 'ci-img'],       edges: ['edge-ci-scan-img'],                      cluster: 'cluster-ci' },
-        deploy:     { nodes: ['ci-img', 'scm', 'registry', 'cd', 'k8s'], edges: ['edge-img-scm', 'edge-ci-registry', 'edge-registry-cd', 'edge-scm-cd', 'edge-cd-k8s'], cluster: null },
-        observe:    { nodes: ['k8s', 'obs-metrics', 'obs-logs', 'obs-trace'], edges: ['edge-k8s-obs'], cluster: 'cluster-obs', telemetry: true },
+        deploy:     { nodes: ['ci-img', 'scm', 'registry', 'cd', 'k8s'], edges: ['edge-img-scm', 'edge-ci-registry', 'edge-registry-cd', 'edge-scm-cd', 'edge-cd-k8s'], cluster: 'cluster-k8s' },
+        observe:    { nodes: ['k8s', 'obs-metrics', 'obs-logs', 'obs-trace'], edges: ['edge-k8s-obs'], cluster: ['cluster-k8s', 'cluster-obs'], telemetry: true },
     };
 
     const allFlowNodes = Array.from(flowCanvas.querySelectorAll('.flow-node'));
@@ -1180,10 +1180,11 @@ function initPlatformPipeline() {
             const e = document.getElementById(eid);
             if (e) e.classList.remove('is-active');
         });
-        if (m.cluster) {
-            const c = flowCanvas.querySelector(`.${m.cluster}`);
+        const clusters = m.cluster ? (Array.isArray(m.cluster) ? m.cluster : [m.cluster]) : [];
+        clusters.forEach(cls => {
+            const c = flowCanvas.querySelector(`.${cls}`);
             if (c) c.classList.remove('is-active');
-        }
+        });
     };
 
     const markFlowFail = (stageKey) => {
@@ -1247,8 +1248,11 @@ function initPlatformPipeline() {
             }
         });
         if (m.cluster) {
-            const c = flowCanvas.querySelector(`.${m.cluster}`);
-            if (c) c.classList.add('is-active');
+            const clusters = Array.isArray(m.cluster) ? m.cluster : [m.cluster];
+            clusters.forEach(cls => {
+                const c = flowCanvas.querySelector(`.${cls}`);
+                if (c) c.classList.add('is-active');
+            });
         }
 
         // Activate edges, then fly packets along them sequentially
