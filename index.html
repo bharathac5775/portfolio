@@ -260,24 +260,36 @@
                             </div>
                             
                             <p class="job-desc">
-                                Operating on the SAP Business Technology Platform (BTP) Core division. SDM enables centralized, secure handling of unstructured business content for Cloud ERP environments, ensuring seamless storage, retrieval, governance, and streamlined document lifecycles through scalable cloud architecture.
+                                SAP Enterprise Content Management (ECM) is SAP's legacy content management product running on the SAP BTP Neo environment. SAP Document Management Service (SDM) is its next-generation, cloud-native successor on SAP BTP Cloud Foundry, providing secure storage, governance, and lifecycle management of unstructured business content (documents, attachments, media) for SAP and non-SAP applications.
                             </p>
-                            
+
                             <ul class="job-bullets">
-                                <li>Developed a multi-threaded Python toolkit to enable forward and reverse metadata migration between MongoDB and PostgreSQL, improving data portability and migration efficiency.</li>
-                                <li>Worked with Cloud Foundry on SAP BTP to deploy, manage, and monitor applications, gaining hands-on experience in cloud-native application lifecycle management.</li>
-                                <li>Successfully set up and self-managed PostgreSQL clusters with High Availability (HA).</li>
+                                <li>Worked extensively on SAP BTP using Cloud Foundry runtime to deploy, manage, and monitor microservices, gaining hands-on experience with cloud-native application lifecycle management on the platform.</li>
+                                <li>Developed a multi-threaded Python toolkit for forward and reverse metadata migration from MongoDB to PostgreSQL on the ECM (Neo) environment, improving data portability and migration efficiency.</li>
+                                <li>Designed and developed the <code>getContentStream</code> API for SDM-SRV, enabling efficient streaming retrieval of document content from the underlying storage layer for downstream consumers on SAP BTP.</li>
+                                <li>Gained hands-on exposure to microservices architecture on SAP BTP, working with Java/Spring Boot-based services for scalable, cloud-native service delivery.</li>
+                                <li>Worked with SAP HANA DB and PostgreSQL for metadata persistence, and integrated multi-cloud object storage across AWS S3, Azure Blob Storage, Google Cloud Storage, and Alibaba Cloud OSS for storing document content.</li>
+                                <li>Used Git, Jenkins, and GitHub Actions for source control and CI/CD pipelines, with SCA and SAST verification stages enforcing code quality and security compliance across SAP BTP services.</li>
+                                <li>Delivered microservices to SAP BTP Cloud Foundry landscapes using a Blue-Green deployment strategy, ensuring zero-downtime releases and safe rollback.</li>
                             </ul>
-                            
+
                             <div class="tech-tags">
-                                <span class="tag">Java</span>
                                 <span class="tag">SAP BTP</span>
                                 <span class="tag">Cloud Foundry</span>
+                                <span class="tag">Java / Spring Boot</span>
                                 <span class="tag">Python</span>
-                                <span class="tag">PostgreSQL (HA)</span>
+                                <span class="tag">Microservices</span>
+                                <span class="tag">SAP HANA DB</span>
+                                <span class="tag">PostgreSQL</span>
                                 <span class="tag">MongoDB</span>
-                                <span class="tag">Data Migration</span>
-                                <span class="tag">Cloud Native</span>
+                                <span class="tag">AWS S3</span>
+                                <span class="tag">Azure Blob</span>
+                                <span class="tag">GCS</span>
+                                <span class="tag">Alibaba OSS</span>
+                                <span class="tag">Jenkins</span>
+                                <span class="tag">GitHub Actions</span>
+                                <span class="tag">SCA / SAST</span>
+                                <span class="tag">Blue-Green Deploy</span>
                             </div>
                         </div>
                     </div>
@@ -601,7 +613,48 @@
                         </div>
                     </div>
 
-                    <!-- Project 2: AI Infrastructure Governance -->
+                    <!-- Project 2: Agentic RAG over SAP SDGs -->
+                    <div class="project-card major-project" data-category="aiops">
+                        <div class="project-card-header">
+                            <div class="project-badge">Agentic RAG</div>
+                            <a href="https://github.com/bharathac5775/Agentic_RAG_over_SAP_SDGs" target="_blank" rel="noopener noreferrer" class="project-repo-link" aria-label="GitHub Repository">
+                                <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+                            </a>
+                        </div>
+
+                        <div class="project-card-body">
+                            <h3 class="project-title">Agentic RAG over SAP Service Description Guides</h3>
+                            <p class="project-description">
+                                A fully-local-by-default Retrieval-Augmented Generation system that answers natural-language questions over ~228 pages of SAP Service Description Guide (SDG) contracts, returning grounded answers with section/page citations.
+                            </p>
+
+                            <ul class="project-bullet-list">
+                                <li>Built two genuinely agentic steps: a <code>(product, intent)</code> router (llama3.2) and a self-check verifier that flags ungrounded claims with one bounded retry.</li>
+                                <li>Hybrid retrieval using BM25 + vector embeddings + Reciprocal Rank Fusion with intent-tuned weights and a heading-anchor boost for canonical short clauses.</li>
+                                <li>Layered guardrails: deterministic input regex (prompt-injection / pricing / off-topic), output PII redaction, a numeric threshold-table answer guard, and an LLM verifier for grounding checks.</li>
+                                <li>Provider-agnostic LLM abstraction (Ollama / OpenAI / Anthropic / Google) driven by env vars; ships with a FastAPI surface, Streamlit UI, and multi-stage Dockerfile.</li>
+                                <li>Explored the repo as a live knowledge graph via <span class="tag">/graphify</span> — <code>graphify-out/</code> holds the generated <code>graph.html</code>, node/edge JSON, and coverage report over the ingestion, retrieval, and agent pipelines.</li>
+                                <li>Backed by 123 unit + integration tests and a 15-row hand-graded eval harness with per-step latency tracing.</li>
+                            </ul>
+                        </div>
+
+                        <div class="project-card-footer">
+                            <div class="tech-tags">
+                                <span class="tag">LangGraph-style Agents</span>
+                                <span class="tag">RAG</span>
+                                <span class="tag">BM25 + Vector RRF</span>
+                                <span class="tag">ChromaDB</span>
+                                <span class="tag">Ollama</span>
+                                <span class="tag">FastAPI</span>
+                                <span class="tag">Streamlit</span>
+                                <span class="tag">Docker Compose</span>
+                                <span class="tag">Graphify</span>
+                                <span class="tag">Python</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Project 3: AI Infrastructure Governance -->
                     <div class="project-card" data-category="aiops">
                         <div class="project-card-header">
                             <div class="project-badge">AI & Ops</div>
@@ -1211,7 +1264,7 @@
                             </div>
                             <div class="form-group">
                                 <label for="form-email" class="form-label">"sender_email":</label>
-                                <input type="email" id="form-email" name="email" class="form-input" placeholder='"thejas_bp@gmail.com"' required>
+                                <input type="email" id="form-email" name="email" class="form-input" placeholder='"example@gmail.com"' required>
                             </div>
                             <div class="form-group">
                                 <label for="form-message" class="form-label">"transmission_payload":</label>
